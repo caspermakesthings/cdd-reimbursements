@@ -37,16 +37,43 @@ async function refreshAccessToken(token: any) {
 
 export const authOptions: NextAuthOptions = {
   providers: [
-    AzureADProvider({
-      clientId: process.env.AZURE_AD_CLIENT_ID!,
-      clientSecret: process.env.AZURE_AD_CLIENT_SECRET!,
-      tenantId: process.env.AZURE_AD_TENANT_ID!,
+    {
+      id: "azure-ad",
+      name: "Azure Active Directory",
+      type: "oauth",
       authorization: {
+        url: `https://login.microsoftonline.com/${process.env.AZURE_AD_TENANT_ID}/oauth2/v2.0/authorize`,
         params: {
-          scope: "openid email profile https://graph.microsoft.com/Files.ReadWrite offline_access"
+          scope: "openid email profile https://graph.microsoft.com/Files.ReadWrite offline_access",
+          response_type: "code",
+          client_id: process.env.AZURE_AD_CLIENT_ID,
+          redirect_uri: `${process.env.NEXTAUTH_URL}/api/auth/callback/azure-ad`
         }
-      }
-    })
+      },
+      token: `https://login.microsoftonline.com/${process.env.AZURE_AD_TENANT_ID}/oauth2/v2.0/token`,
+      userinfo: {
+        url: "https://graph.microsoft.com/oidc/userinfo",
+        async request({ tokens, client }) {
+          const response = await fetch("https://graph.microsoft.com/oidc/userinfo", {
+            headers: {
+              Authorization: `Bearer ${tokens.access_token}`,
+            },
+          })
+          return await response.json()
+        }
+      },
+      clientId: process.env.AZURE_AD_CLIENT_ID,
+      clientSecret: process.env.AZURE_AD_CLIENT_SECRET,
+      issuer: `https://login.microsoftonline.com/${process.env.AZURE_AD_TENANT_ID}/v2.0`,
+      profile(profile) {
+        return {
+          id: profile.sub,
+          name: profile.name,
+          email: profile.email,
+          image: null,
+        }
+      },
+    }
   ],
   debug: process.env.NODE_ENV === 'development',
   callbacks: {
@@ -119,5 +146,19 @@ export const authOptions: NextAuthOptions = {
   },
   session: {
     strategy: "jwt",
+  },
+  pages: {
+    error: '/auth/error',
+  },
+  cookies: {
+    pkceCodeVerifier: {
+      name: "next-auth.pkce.code_verifier",
+      options: {
+        httpOnly: true,
+        sameSite: "lax",
+        path: "/",
+        secure: process.env.NODE_ENV === "production",
+      },
+    },
   }
 }
