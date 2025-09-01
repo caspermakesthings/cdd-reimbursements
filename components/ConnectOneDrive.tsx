@@ -71,7 +71,13 @@ export default function ConnectOneDrive() {
 
   const handleConnect = () => {
     console.log('Starting OneDrive connection...')
-    signIn('azure-ad')
+    console.log('NextAuth URL:', process.env.NEXTAUTH_URL)
+    console.log('Current origin:', window.location.origin)
+    
+    // Use explicit callback URL to ensure it's correct
+    signIn('azure-ad', {
+      callbackUrl: `${window.location.origin}/new`
+    })
   }
 
   return (

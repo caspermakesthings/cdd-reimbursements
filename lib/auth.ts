@@ -45,11 +45,7 @@ export const authOptions: NextAuthOptions = {
         params: {
           scope: "openid email profile https://graph.microsoft.com/Files.ReadWrite offline_access"
         }
-      },
-      // Use explicit URLs instead of wellKnown discovery to avoid 404 issues
-      issuer: `https://login.microsoftonline.com/${process.env.AZURE_AD_TENANT_ID}/v2.0`,
-      token: `https://login.microsoftonline.com/${process.env.AZURE_AD_TENANT_ID}/oauth2/v2.0/token`,
-      userinfo: `https://graph.microsoft.com/oidc/userinfo`,
+      }
     })
   ],
   debug: process.env.NODE_ENV === 'development',
@@ -123,16 +119,5 @@ export const authOptions: NextAuthOptions = {
   },
   session: {
     strategy: "jwt",
-  },
-  pages: {
-    error: '/auth/error',
-    signIn: '/auth/signin',
-  },
-  events: {
-    async signIn({ user, account, profile, isNewUser }) {
-      if (process.env.NODE_ENV === 'development') {
-        console.log('SignIn event - success:', { user: !!user, account: !!account })
-      }
-    }
   }
 }
