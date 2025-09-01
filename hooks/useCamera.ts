@@ -84,7 +84,9 @@ export function useCamera(): UseCamera {
         stopCameraStream(streamRef.current);
       }
 
+      console.log('Requesting camera access with constraints:', constraints);
       const stream = await requestCameraAccess(constraints);
+      console.log('Camera stream received:', stream);
       streamRef.current = stream;
 
       // Attach stream to video element
@@ -96,12 +98,14 @@ export function useCamera(): UseCamera {
           const video = videoRef.current!;
           
           const handleLoadedData = () => {
+            console.log('Video loaded successfully');
             video.removeEventListener('loadeddata', handleLoadedData);
             video.removeEventListener('error', handleError);
             resolve();
           };
           
           const handleError = (event: Event) => {
+            console.error('Video load error:', event);
             video.removeEventListener('loadeddata', handleLoadedData);
             video.removeEventListener('error', handleError);
             reject(new Error('Failed to load video stream'));
@@ -110,7 +114,12 @@ export function useCamera(): UseCamera {
           video.addEventListener('loadeddata', handleLoadedData);
           video.addEventListener('error', handleError);
           
-          video.play().catch(reject);
+          video.play().then(() => {
+            console.log('Video playing');
+          }).catch((playError) => {
+            console.error('Video play error:', playError);
+            reject(playError);
+          });
         });
       }
 

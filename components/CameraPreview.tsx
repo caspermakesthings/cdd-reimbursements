@@ -162,41 +162,43 @@ export default function CameraPreview({ onCapture, onCancel, onError }: CameraPr
 
       {/* Camera Preview */}
       <div className="flex-1 relative overflow-hidden">
-        {state.isLoading ? (
+        {/* Always render video element but hide when loading */}
+        <video
+          ref={videoRef}
+          autoPlay
+          playsInline
+          muted
+          className={`w-full h-full object-cover ${state.isLoading ? 'opacity-0' : 'opacity-100'}`}
+          style={{ transform: 'scaleX(-1)' }} // Mirror for better UX
+        />
+        
+        {/* Loading overlay */}
+        {state.isLoading && (
           <div className="absolute inset-0 flex items-center justify-center bg-gray-900">
             <div className="text-center text-white">
               <Loader2 className="h-8 w-8 animate-spin mx-auto mb-2" />
               <p className="text-sm">Starting camera...</p>
             </div>
           </div>
-        ) : (
-          <>
-            <video
-              ref={videoRef}
-              autoPlay
-              playsInline
-              muted
-              className="w-full h-full object-cover"
-              style={{ transform: 'scaleX(-1)' }} // Mirror for better UX
-            />
-            
-            {/* Overlay guides for receipt positioning */}
-            <div className="absolute inset-0 pointer-events-none">
-              <div className="h-full w-full flex items-center justify-center p-8">
-                <div className="border-2 border-white border-dashed rounded-lg w-full max-w-sm aspect-[3/4] relative opacity-50">
-                  <div className="absolute top-2 left-2 w-4 h-4 border-t-2 border-l-2 border-white"></div>
-                  <div className="absolute top-2 right-2 w-4 h-4 border-t-2 border-r-2 border-white"></div>
-                  <div className="absolute bottom-2 left-2 w-4 h-4 border-b-2 border-l-2 border-white"></div>
-                  <div className="absolute bottom-2 right-2 w-4 h-4 border-b-2 border-r-2 border-white"></div>
-                  <div className="absolute inset-0 flex items-center justify-center">
-                    <p className="text-white text-sm text-center px-4">
-                      Position receipt within the frame
-                    </p>
-                  </div>
+        )}
+        
+        {/* Overlay guides for receipt positioning */}
+        {!state.isLoading && (
+          <div className="absolute inset-0 pointer-events-none">
+            <div className="h-full w-full flex items-center justify-center p-8">
+              <div className="border-2 border-white border-dashed rounded-lg w-full max-w-sm aspect-[3/4] relative opacity-50">
+                <div className="absolute top-2 left-2 w-4 h-4 border-t-2 border-l-2 border-white"></div>
+                <div className="absolute top-2 right-2 w-4 h-4 border-t-2 border-r-2 border-white"></div>
+                <div className="absolute bottom-2 left-2 w-4 h-4 border-b-2 border-l-2 border-white"></div>
+                <div className="absolute bottom-2 right-2 w-4 h-4 border-b-2 border-r-2 border-white"></div>
+                <div className="absolute inset-0 flex items-center justify-center">
+                  <p className="text-white text-sm text-center px-4">
+                    Position receipt within the frame
+                  </p>
                 </div>
               </div>
             </div>
-          </>
+          </div>
         )}
       </div>
 
