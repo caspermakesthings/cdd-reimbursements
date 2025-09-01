@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server"
 import { getServerSession } from "next-auth"
-import { authOptions } from "@/app/api/auth/[...nextauth]/route"
+import { authOptions } from "@/lib/auth"
 import { reimbursementSchema, fileSchema } from "@/lib/schema"
 import { generateReimbursementId, getYearMonth, getCurrentTimestamp } from "@/lib/utils"
 import { buildCoverPage, mergeWithReceipt } from "@/lib/pdf"
@@ -114,7 +114,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
       id
     }
     
-    return new NextResponse(combinedPdfBuffer, {
+    return new NextResponse(combinedPdfBuffer as unknown as BodyInit, {
       status: 200,
       headers: {
         'Content-Type': 'application/pdf',

@@ -352,7 +352,7 @@ function distance(p1: Point, p2: Point): number {
  * Main function to detect document rectangle in image
  */
 export async function detectDocumentRectangle(
-  imageElement: HTMLImageElement | HTMLVideoElement
+  imageElement: HTMLImageElement | HTMLVideoElement | HTMLCanvasElement
 ): Promise<ProcessedImage> {
   const canvas = document.createElement('canvas');
   const ctx = canvas.getContext('2d');
@@ -362,12 +362,16 @@ export async function detectDocumentRectangle(
   }
   
   // Set canvas size
-  canvas.width = imageElement instanceof HTMLVideoElement 
-    ? imageElement.videoWidth 
-    : imageElement.naturalWidth;
-  canvas.height = imageElement instanceof HTMLVideoElement 
-    ? imageElement.videoHeight 
-    : imageElement.naturalHeight;
+  if (imageElement instanceof HTMLVideoElement) {
+    canvas.width = imageElement.videoWidth;
+    canvas.height = imageElement.videoHeight;
+  } else if (imageElement instanceof HTMLCanvasElement) {
+    canvas.width = imageElement.width;
+    canvas.height = imageElement.height;
+  } else {
+    canvas.width = imageElement.naturalWidth;
+    canvas.height = imageElement.naturalHeight;
+  }
   
   // Draw image to canvas
   ctx.drawImage(imageElement, 0, 0);

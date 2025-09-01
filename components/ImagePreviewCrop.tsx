@@ -88,7 +88,7 @@ export default function ImagePreviewCrop({ file, onAccept, onCancel }: ImagePrev
     setIsProcessing(false)
   }
 
-  const handleMouseDown = (e: React.MouseEvent<SVGSVGElement>, pointIndex: number) => {
+  const handleMouseDown = (e: React.MouseEvent, pointIndex: number) => {
     setIsDragging(true)
     setDragPointIndex(pointIndex)
     e.preventDefault()
