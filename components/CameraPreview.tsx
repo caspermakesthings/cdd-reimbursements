@@ -30,7 +30,7 @@ export default function CameraPreview({ onCapture, onCancel, onError }: CameraPr
     return () => {
       actions.stopCamera()
     }
-  }, [state.isSupported])
+  }, [state.isSupported, actions, onError])
 
   // Handle capture
   const handleCapture = async () => {
@@ -95,7 +95,7 @@ export default function CameraPreview({ onCapture, onCancel, onError }: CameraPr
               Camera Not Supported
             </h3>
             <p className="text-sm text-gray-500 mb-4">
-              Your browser doesn't support camera access, or no camera was found.
+              Your browser doesn&apos;t support camera access, or no camera was found.
             </p>
             <Button onClick={onCancel} className="w-full">
               Use File Upload Instead

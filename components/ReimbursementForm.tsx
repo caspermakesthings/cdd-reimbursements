@@ -12,12 +12,10 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form'
 import { useToast } from '@/components/ui/use-toast'
 import { useState, useEffect } from 'react'
-import ConnectOneDrive from '@/components/ConnectOneDrive'
 import ReceiptScanner from '@/components/ReceiptScanner'
 
 export default function ReimbursementForm() {
   const [isSubmitting, setIsSubmitting] = useState(false)
-  const [driveStatus, setDriveStatus] = useState<{ connected: boolean } | null>(null)
   const [selectedFile, setSelectedFile] = useState<File | null>(null)
   const { toast } = useToast()
 
@@ -37,20 +35,6 @@ export default function ReimbursementForm() {
     }
   })
 
-  useEffect(() => {
-    async function fetchDriveStatus() {
-      try {
-        const response = await fetch('/api/drive/status')
-        const data = await response.json()
-        setDriveStatus(data)
-      } catch (error) {
-        console.error('Failed to fetch drive status:', error)
-        setDriveStatus({ connected: false })
-      }
-    }
-
-    fetchDriveStatus()
-  }, [])
 
   const handleFileSelect = (file: File) => {
     setSelectedFile(file)
@@ -86,55 +70,30 @@ export default function ReimbursementForm() {
         body: formData
       })
 
-      if (response.headers.get('content-type') === 'application/pdf') {
-        // Handle PDF download
-        const blob = await response.blob()
-        const url = window.URL.createObjectURL(blob)
-        const a = document.createElement('a')
-        a.href = url
-        a.download = response.headers.get('content-disposition')?.split('filename=')[1]?.replace(/"/g, '') || 'reimbursement.pdf'
-        document.body.appendChild(a)
-        a.click()
-        window.URL.revokeObjectURL(url)
-        document.body.removeChild(a)
-
-        toast({
-          title: "Success!",
-          description: "Your reimbursement PDF has been downloaded."
-        })
-      } else {
-        // Handle JSON response (OneDrive upload)
-        const result = await response.json()
-
-        if (!response.ok) {
-          throw new Error(result.error || 'Failed to submit reimbursement')
-        }
-
-        if (result.status === 'uploaded') {
-          toast({
-            title: "Uploaded to OneDrive!",
-            description: `${result.id}.pdf uploaded to PDFs folder. Supporting documents (JSON + receipt) saved separately for organization.`,
-            action: result.webUrl ? (
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => window.open(result.webUrl, '_blank')}
-              >
-                Open PDF
-              </Button>
-            ) : undefined
-          })
-        }
+      if (!response.ok) {
+        const errorData = await response.json()
+        throw new Error(errorData.error || 'Failed to generate PDF')
       }
+
+      // Handle PDF download
+      const blob = await response.blob()
+      const url = window.URL.createObjectURL(blob)
+      const a = document.createElement('a')
+      a.href = url
+      a.download = response.headers.get('content-disposition')?.split('filename=')[1]?.replace(/"/g, '') || 'reimbursement.pdf'
+      document.body.appendChild(a)
+      a.click()
+      window.URL.revokeObjectURL(url)
+      document.body.removeChild(a)
+
+      toast({
+        title: "PDF Generated Successfully! 📄",
+        description: "Your reimbursement PDF has been downloaded and is ready for submission."
+      })
 
       // Reset form
       form.reset()
       setSelectedFile(null)
-
-      // Refresh drive status
-      const statusResponse = await fetch('/api/drive/status')
-      const statusData = await statusResponse.json()
-      setDriveStatus(statusData)
 
     } catch (error: any) {
       console.error('Submission error:', error)
@@ -150,19 +109,12 @@ export default function ReimbursementForm() {
 
   return (
     <div className="max-w-2xl mx-auto space-y-8">
-      {/* Connection Status */}
-      <div className={`border rounded-lg p-4 ${driveStatus?.connected ? 'bg-green-50 border-green-200' : 'bg-gray-50'}`}>
-        <h3 className="font-semibold mb-2">OneDrive Integration</h3>
-        {driveStatus?.connected ? (
-          <p className="text-sm text-green-700 mb-4">
-            ✅ Connected to OneDrive! Your reimbursement will be automatically uploaded and organized.
-          </p>
-        ) : (
-          <p className="text-sm text-gray-600 mb-4">
-            Connect your Microsoft account to automatically save reimbursements to OneDrive. Otherwise, we'll generate a PDF for you to download.
-          </p>
-        )}
-        <ConnectOneDrive />
+      {/* App Description */}
+      <div className="border rounded-lg p-4 bg-blue-50 border-blue-200">
+        <h3 className="font-semibold mb-2">📄 Reimbursement PDF Generator</h3>
+        <p className="text-sm text-blue-700">
+          Fill out your reimbursement details and attach your receipt. We&apos;ll generate a professional PDF with your receipt attached for easy submission to your finance team.
+        </p>
       </div>
 
       {/* Form */}
@@ -387,12 +339,7 @@ export default function ReimbursementForm() {
             disabled={isSubmitting}
             size="lg"
           >
-            {isSubmitting
-              ? 'Processing...'
-              : driveStatus?.connected
-              ? 'Submit & Upload to OneDrive'
-              : 'Submit & Download PDF'
-            }
+            {isSubmitting ? 'Generating PDF...' : '📄 Generate Reimbursement PDF'}
           </Button>
         </form>
       </Form>

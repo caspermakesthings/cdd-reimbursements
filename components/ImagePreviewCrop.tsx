@@ -1,6 +1,6 @@
 'use client'
 
-import React, { useRef, useEffect, useState } from 'react'
+import React, { useRef, useEffect, useState, useCallback } from 'react'
 import { Button } from '@/components/ui/button'
 import { Check, X, RotateCw, Crop, Loader2 } from 'lucide-react'
 import { detectDocumentRectangle, cropToRectangle, Rectangle, Point, ProcessedImage } from '@/lib/imageProcessing'
@@ -21,11 +21,7 @@ export default function ImagePreviewCrop({ file, onAccept, onCancel }: ImagePrev
   const [dragPointIndex, setDragPointIndex] = useState<number>(-1)
   const [showAutoDetection, setShowAutoDetection] = useState(true)
 
-  useEffect(() => {
-    processImage()
-  }, [file])
-
-  const processImage = async () => {
+  const processImage = useCallback(async () => {
     setIsProcessing(true)
     
     try {
@@ -71,7 +67,11 @@ export default function ImagePreviewCrop({ file, onAccept, onCancel }: ImagePrev
       console.error('Failed to load image:', error)
       setIsProcessing(false)
     }
-  }
+  }, [file])
+
+  useEffect(() => {
+    processImage()
+  }, [file, processImage])
 
   const handleAutoDetect = async () => {
     if (!processedImage) return
