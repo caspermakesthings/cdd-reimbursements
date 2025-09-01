@@ -3,7 +3,7 @@ import type { NextAuthOptions } from "next-auth"
 
 async function refreshAccessToken(token: any) {
   try {
-    const response = await fetch("https://login.microsoftonline.com/common/oauth2/v2.0/token", {
+    const response = await fetch(`https://login.microsoftonline.com/${process.env.AZURE_AD_TENANT_ID}/oauth2/v2.0/token`, {
       headers: { "Content-Type": "application/x-www-form-urlencoded" },
       body: new URLSearchParams({
         client_id: process.env.AZURE_AD_CLIENT_ID!,
@@ -45,7 +45,8 @@ export const authOptions: NextAuthOptions = {
         params: {
           scope: "openid email profile https://graph.microsoft.com/Files.ReadWrite offline_access"
         }
-      }
+      },
+      wellKnown: `https://login.microsoftonline.com/${process.env.AZURE_AD_TENANT_ID}/v2.0/.well-known/openid_configuration`,
     })
   ],
   callbacks: {

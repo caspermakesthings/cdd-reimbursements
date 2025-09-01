@@ -8,7 +8,6 @@ export default function ConnectOneDrive() {
   const { data: session, status } = useSession()
   const [isConnected, setIsConnected] = useState(false)
   const [isLoading, setIsLoading] = useState(true)
-
   useEffect(() => {
     async function checkStatus() {
       try {
@@ -70,15 +69,18 @@ export default function ConnectOneDrive() {
     )
   }
 
+  const handleConnect = () => {
+    console.log('Starting OneDrive connection...')
+    signIn('azure-ad')
+  }
+
   return (
     <div className="flex items-center gap-4">
       <div className="flex items-center gap-2">
         <div className="w-2 h-2 bg-gray-400 rounded-full"></div>
         <span className="text-sm text-gray-600">Not connected to OneDrive</span>
       </div>
-      <Button
-        onClick={() => signIn('azure-ad')}
-      >
+      <Button onClick={handleConnect}>
         Connect OneDrive
       </Button>
     </div>

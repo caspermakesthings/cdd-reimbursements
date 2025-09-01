@@ -151,15 +151,15 @@ export default function ReimbursementForm() {
   return (
     <div className="max-w-2xl mx-auto space-y-8">
       {/* Connection Status */}
-      <div className="border rounded-lg p-4 bg-gray-50">
+      <div className={`border rounded-lg p-4 ${driveStatus?.connected ? 'bg-green-50 border-green-200' : 'bg-gray-50'}`}>
         <h3 className="font-semibold mb-2">OneDrive Integration</h3>
         {driveStatus?.connected ? (
-          <p className="text-sm text-gray-600 mb-4">
-            Connected to OneDrive. Your reimbursement will be automatically uploaded and organized.
+          <p className="text-sm text-green-700 mb-4">
+            ✅ Connected to OneDrive! Your reimbursement will be automatically uploaded and organized.
           </p>
         ) : (
           <p className="text-sm text-gray-600 mb-4">
-            Connect OneDrive to auto-file your reimbursements. Otherwise, we'll give you a PDF to download.
+            Connect your Microsoft account to automatically save reimbursements to OneDrive. Otherwise, we'll generate a PDF for you to download.
           </p>
         )}
         <ConnectOneDrive />
