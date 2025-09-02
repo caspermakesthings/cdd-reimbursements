@@ -15,7 +15,7 @@ export async function buildCoverPage(
   id: string
 ): Promise<Uint8Array> {
   const pdfDoc = await PDFDocument.create()
-  const page = pdfDoc.addPage([612, 792]) // Letter size
+  let page = pdfDoc.addPage([612, 792]) // Letter size
   
   const helveticaFont = await pdfDoc.embedFont(StandardFonts.Helvetica)
   const helveticaBoldFont = await pdfDoc.embedFont(StandardFonts.HelveticaBold)
