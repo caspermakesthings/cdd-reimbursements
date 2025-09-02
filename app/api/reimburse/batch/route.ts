@@ -3,9 +3,21 @@ import { reimbursementSchema, fileSchema } from "@/lib/schema"
 import { generateReimbursementId } from "@/lib/utils"
 import { buildBatchCoverPage, mergeWithMultipleReceipts } from "@/lib/pdf"
 
+// Route segment config for handling large requests
+export const runtime = 'nodejs'
+export const maxDuration = 60 // 60 seconds timeout
+
 export async function POST(request: NextRequest): Promise<NextResponse> {
   try {
     const formData = await request.formData()
+    
+    // Validate that we have the required fields
+    if (!formData.has('totalExpenses')) {
+      return NextResponse.json(
+        { error: "Missing totalExpenses field" },
+        { status: 400 }
+      )
+    }
     
     const totalExpenses = parseInt(formData.get('totalExpenses') as string || '0')
     const eventDescription = formData.get('eventDescription') as string || ''
@@ -39,28 +51,51 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
         )
       }
       
-      // Parse JSON expense data
-      const parsedExpense = JSON.parse(expenseData as string)
+      // Parse JSON expense data with better error handling
+      let parsedExpense
+      try {
+        parsedExpense = JSON.parse(expenseData as string)
+      } catch (parseError) {
+        console.error(`JSON parse error for expense ${i + 1}:`, parseError)
+        return NextResponse.json(
+          { 
+            error: `Invalid JSON data for expense ${i + 1}`,
+            details: `Failed to parse expense data: ${parseError instanceof Error ? parseError.message : 'Unknown error'}`
+          },
+          { status: 400 }
+        )
+      }
       
       // Remove internal fields that aren't part of the schema
       const { id, receiptFile: _, ...expenseFields } = parsedExpense
       
       // Validate expense data
-      const validatedExpense = reimbursementSchema.parse(expenseFields)
-      
-      // Validate receipt file
-      const validatedFile = fileSchema.parse({
-        name: receiptFile.name,
-        size: receiptFile.size,
-        type: receiptFile.type
-      })
-      
-      expenses.push({
-        ...validatedExpense,
-        // Calculate individual totals
-        subtotal: validatedExpense.total - (validatedExpense.tax || 0) - (validatedExpense.tip || 0)
-      })
-      receiptFiles.push(receiptFile)
+      try {
+        const validatedExpense = reimbursementSchema.parse(expenseFields)
+        
+        // Validate receipt file
+        const validatedFile = fileSchema.parse({
+          name: receiptFile.name,
+          size: receiptFile.size,
+          type: receiptFile.type
+        })
+        
+        expenses.push({
+          ...validatedExpense,
+          // Calculate individual totals
+          subtotal: validatedExpense.total - (validatedExpense.tax || 0) - (validatedExpense.tip || 0)
+        })
+        receiptFiles.push(receiptFile)
+      } catch (validationError: any) {
+        console.error(`Validation error for expense ${i + 1}:`, validationError)
+        return NextResponse.json(
+          { 
+            error: `Validation failed for expense ${i + 1}`,
+            details: validationError.errors || validationError.message
+          },
+          { status: 400 }
+        )
+      }
     }
     
     // Generate batch ID
@@ -101,6 +136,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
   } catch (error: any) {
     console.error("Batch reimbursement processing error:", error)
     
+    // Handle specific error types
     if (error.name === 'ZodError') {
       return NextResponse.json(
         { 
@@ -111,8 +147,33 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
       )
     }
     
+    // Handle request size errors
+    if (error.message && error.message.includes('Request Entity Too Large')) {
+      return NextResponse.json(
+        { 
+          error: "Request too large",
+          details: "The batch request exceeds the maximum allowed size. Try reducing the number of expenses or file sizes."
+        },
+        { status: 413 }
+      )
+    }
+    
+    // Handle JSON parsing errors
+    if (error instanceof SyntaxError && error.message.includes('JSON')) {
+      return NextResponse.json(
+        { 
+          error: "Invalid JSON data",
+          details: "The request contains malformed JSON data"
+        },
+        { status: 400 }
+      )
+    }
+    
     return NextResponse.json(
-      { error: "Internal server error" },
+      { 
+        error: "Internal server error",
+        details: error.message || "An unexpected error occurred"
+      },
       { status: 500 }
     )
   }

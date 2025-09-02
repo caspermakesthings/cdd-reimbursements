@@ -168,8 +168,26 @@ export default function BatchReimbursementForm() {
       })
 
       if (!response.ok) {
-        const errorData = await response.json()
-        throw new Error(errorData.error || 'Failed to generate batch PDF')
+        let errorMessage = 'Failed to generate batch PDF'
+        
+        try {
+          const errorData = await response.json()
+          errorMessage = errorData.error || errorData.details || errorMessage
+        } catch (parseError) {
+          // If we can't parse JSON, it might be an HTML error page
+          const text = await response.text()
+          console.error('Non-JSON error response:', text)
+          
+          if (response.status === 413) {
+            errorMessage = 'Request too large. Try reducing the number of expenses or file sizes.'
+          } else if (response.status === 400) {
+            errorMessage = 'Invalid request data. Please check your expense information.'
+          } else if (response.status >= 500) {
+            errorMessage = 'Server error. Please try again later.'
+          }
+        }
+        
+        throw new Error(errorMessage)
       }
 
       // Handle PDF download

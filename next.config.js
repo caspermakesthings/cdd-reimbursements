@@ -12,6 +12,20 @@ const nextConfig = {
       }
     }
     return config
+  },
+  // Configure for larger file uploads
+  async headers() {
+    return [
+      {
+        source: '/api/reimburse/batch',
+        headers: [
+          {
+            key: 'Access-Control-Allow-Origin',
+            value: '*',
+          },
+        ],
+      },
+    ]
   }
 }
 
