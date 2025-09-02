@@ -8,15 +8,6 @@ export const runtime = 'nodejs'
 export const maxDuration = 120 // 120 seconds timeout for large batches
 export const dynamic = 'force-dynamic'
 
-// Configure body size limit for large file uploads
-export const config = {
-  api: {
-    bodyParser: {
-      sizeLimit: '50mb', // Allow up to 50MB for batch uploads
-    },
-  },
-}
-
 export async function POST(request: NextRequest): Promise<NextResponse> {
   try {
     const formData = await request.formData()
@@ -162,7 +153,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
       return NextResponse.json(
         { 
           error: "Request too large",
-          details: `The batch request exceeds the maximum allowed size (50MB). Current batch has ${expenses?.length || 0} expenses. Try reducing file sizes or splitting into smaller batches.`
+          details: "The batch request exceeds the maximum allowed size (50MB). Try reducing file sizes or splitting into smaller batches."
         },
         { status: 413 }
       )
