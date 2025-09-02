@@ -170,20 +170,35 @@ export default function BatchReimbursementForm() {
       if (!response.ok) {
         let errorMessage = 'Failed to generate batch PDF'
         
-        try {
-          const errorData = await response.json()
-          errorMessage = errorData.error || errorData.details || errorMessage
-        } catch (parseError) {
-          // If we can't parse JSON, it might be an HTML error page
-          const text = await response.text()
-          console.error('Non-JSON error response:', text)
+        // Check if response is JSON or text
+        const contentType = response.headers.get('content-type')
+        
+        if (contentType && contentType.includes('application/json')) {
+          try {
+            const errorData = await response.json()
+            errorMessage = errorData.error || errorData.details || errorMessage
+          } catch (parseError) {
+            console.error('Failed to parse JSON error response:', parseError)
+            errorMessage = 'Server returned an invalid error response'
+          }
+        } else {
+          // Handle non-JSON responses (HTML error pages, etc.)
+          try {
+            const text = await response.text()
+            console.error('Non-JSON error response:', text)
+          } catch (textError) {
+            console.error('Failed to read error response text:', textError)
+          }
           
+          // Set appropriate error message based on status code
           if (response.status === 413) {
             errorMessage = 'Request too large. Try reducing the number of expenses or file sizes.'
           } else if (response.status === 400) {
             errorMessage = 'Invalid request data. Please check your expense information.'
           } else if (response.status >= 500) {
             errorMessage = 'Server error. Please try again later.'
+          } else {
+            errorMessage = `HTTP ${response.status}: ${response.statusText}`
           }
         }
         
