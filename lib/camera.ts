@@ -63,26 +63,49 @@ export async function requestCameraAccess(
     );
   }
 
-  const defaultConstraints: MediaStreamConstraints = {
-    video: {
-      width: { ideal: 1920, max: 1920 },
-      height: { ideal: 1080, max: 1080 },
-      facingMode: 'environment', // Prefer back camera for documents
-      ...constraints
-    },
+  // Build constraints with fallbacks
+  const videoConstraints: MediaTrackConstraints = {
+    width: { ideal: constraints.width || 1280, max: 1920 },
+    height: { ideal: constraints.height || 720, max: 1080 },
+    facingMode: constraints.facingMode || 'environment'
+  };
+
+  const streamConstraints: MediaStreamConstraints = {
+    video: videoConstraints,
     audio: false
   };
 
   try {
-    const stream = await navigator.mediaDevices.getUserMedia(defaultConstraints);
+    console.log('Attempting camera access with constraints:', streamConstraints);
+    const stream = await navigator.mediaDevices.getUserMedia(streamConstraints);
+    
+    // Verify we got a valid stream
+    if (!stream || !stream.active) {
+      throw new Error('Received inactive stream');
+    }
+    
+    const videoTracks = stream.getVideoTracks();
+    if (videoTracks.length === 0) {
+      throw new Error('No video tracks in stream');
+    }
+    
+    console.log('Camera access successful:', {
+      streamId: stream.id,
+      active: stream.active,
+      videoTracks: videoTracks.length,
+      settings: videoTracks[0].getSettings()
+    });
+    
     return stream;
   } catch (error: any) {
+    console.error('Camera access error:', error);
+    
     let message = 'Failed to access camera';
     let code = 'CAMERA_ACCESS_FAILED';
 
     switch (error.name) {
       case 'NotAllowedError':
-        message = 'Camera access denied. Please allow camera permissions.';
+        message = 'Camera access denied. Please allow camera permissions and try again.';
         code = 'PERMISSION_DENIED';
         break;
       case 'NotFoundError':
@@ -94,13 +117,35 @@ export async function requestCameraAccess(
         code = 'CAMERA_IN_USE';
         break;
       case 'OverconstrainedError':
-        message = 'Camera does not meet the required constraints.';
-        code = 'CONSTRAINTS_NOT_SATISFIED';
+        // Try with more relaxed constraints
+        console.log('Constraints too strict, trying with relaxed constraints');
+        try {
+          const relaxedConstraints: MediaStreamConstraints = {
+            video: {
+              facingMode: constraints.facingMode || 'environment'
+            },
+            audio: false
+          };
+          const fallbackStream = await navigator.mediaDevices.getUserMedia(relaxedConstraints);
+          console.log('Fallback camera access successful');
+          return fallbackStream;
+        } catch (fallbackError) {
+          message = 'Camera does not support the required quality. Please try a different camera.';
+          code = 'CONSTRAINTS_NOT_SATISFIED';
+        }
         break;
       case 'SecurityError':
-        message = 'Camera access blocked due to security restrictions.';
+        message = 'Camera access blocked due to security restrictions. Please use HTTPS.';
         code = 'SECURITY_ERROR';
         break;
+      case 'AbortError':
+        message = 'Camera access was cancelled.';
+        code = 'ACCESS_CANCELLED';
+        break;
+      default:
+        if (error.message) {
+          message = `Camera error: ${error.message}`;
+        }
     }
 
     throw new CameraError(message, code, error);

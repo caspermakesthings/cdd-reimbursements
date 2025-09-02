@@ -82,50 +82,123 @@ export function useCamera(): UseCamera {
       // Stop existing stream if any
       if (streamRef.current) {
         stopCameraStream(streamRef.current);
+        streamRef.current = null;
       }
 
       console.log('Requesting camera access with constraints:', constraints);
       const stream = await requestCameraAccess(constraints);
       console.log('Camera stream received:', stream);
+      
+      // Verify stream is active
+      if (!stream || !stream.active) {
+        throw new Error('Camera stream is not active');
+      }
+      
       streamRef.current = stream;
 
-      // Attach stream to video element
+      // Attach stream to video element with improved handling
       if (videoRef.current) {
-        videoRef.current.srcObject = stream;
+        const video = videoRef.current;
         
-        // Wait for video to load
+        // Clear any existing source
+        video.srcObject = null;
+        
+        // Set up the new stream
+        video.srcObject = stream;
+        
+        // Wait for video to be ready with multiple fallbacks
         await new Promise<void>((resolve, reject) => {
-          const video = videoRef.current!;
+          const timeoutId = setTimeout(() => {
+            cleanup();
+            reject(new Error('Video loading timeout - camera may be in use'));
+          }, 10000); // 10 second timeout
+          
+          let resolved = false;
+          
+          const cleanup = () => {
+            if (timeoutId) clearTimeout(timeoutId);
+            video.removeEventListener('loadedmetadata', handleLoadedMetadata);
+            video.removeEventListener('loadeddata', handleLoadedData);
+            video.removeEventListener('canplay', handleCanPlay);
+            video.removeEventListener('error', handleError);
+          };
+          
+          const resolveOnce = () => {
+            if (!resolved) {
+              resolved = true;
+              cleanup();
+              console.log('Video ready for capture');
+              resolve();
+            }
+          };
+          
+          const handleLoadedMetadata = () => {
+            console.log('Video metadata loaded');
+            if (video.videoWidth > 0 && video.videoHeight > 0) {
+              resolveOnce();
+            }
+          };
           
           const handleLoadedData = () => {
-            console.log('Video loaded successfully');
-            video.removeEventListener('loadeddata', handleLoadedData);
-            video.removeEventListener('error', handleError);
-            resolve();
+            console.log('Video data loaded');
+            if (video.readyState >= 2) { // HAVE_CURRENT_DATA
+              resolveOnce();
+            }
+          };
+          
+          const handleCanPlay = () => {
+            console.log('Video can play');
+            resolveOnce();
           };
           
           const handleError = (event: Event) => {
             console.error('Video load error:', event);
-            video.removeEventListener('loadeddata', handleLoadedData);
-            video.removeEventListener('error', handleError);
-            reject(new Error('Failed to load video stream'));
+            cleanup();
+            if (!resolved) {
+              resolved = true;
+              reject(new Error('Failed to load video stream'));
+            }
           };
 
+          // Add multiple event listeners for different browsers
+          video.addEventListener('loadedmetadata', handleLoadedMetadata);
           video.addEventListener('loadeddata', handleLoadedData);
+          video.addEventListener('canplay', handleCanPlay);
           video.addEventListener('error', handleError);
           
+          // Start playing
           video.play().then(() => {
-            console.log('Video playing');
+            console.log('Video started playing');
+            // Some browsers resolve immediately, others need more time
+            if (video.readyState >= 2 && video.videoWidth > 0) {
+              resolveOnce();
+            }
           }).catch((playError) => {
             console.error('Video play error:', playError);
-            reject(playError);
+            cleanup();
+            if (!resolved) {
+              resolved = true;
+              reject(new Error(`Failed to play video: ${playError.message}`));
+            }
           });
+          
+          // Immediate check in case video is already ready
+          if (video.readyState >= 2 && video.videoWidth > 0 && video.videoHeight > 0) {
+            resolveOnce();
+          }
         });
+      } else {
+        throw new Error('Video element not available');
       }
 
       // Get the actual device being used
       const videoTrack = stream.getVideoTracks()[0];
+      if (!videoTrack) {
+        throw new Error('No video track found in stream');
+      }
+      
       const settings = videoTrack.getSettings();
+      console.log('Camera settings:', settings);
       
       setState(prev => ({
         ...prev,
@@ -134,11 +207,23 @@ export function useCamera(): UseCamera {
         currentDeviceId: settings.deviceId,
         error: null
       }));
-    } catch (error) {
+    } catch (error: any) {
       console.error('Camera start error:', error);
+      
+      // Clean up on error
+      if (streamRef.current) {
+        stopCameraStream(streamRef.current);
+        streamRef.current = null;
+      }
+      
+      if (videoRef.current) {
+        videoRef.current.srcObject = null;
+      }
       
       let errorMessage = 'Failed to start camera';
       if (error instanceof CameraError) {
+        errorMessage = error.message;
+      } else if (error instanceof Error) {
         errorMessage = error.message;
       }
 

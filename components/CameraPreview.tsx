@@ -19,17 +19,35 @@ export default function CameraPreview({ onCapture, onCancel, onError }: CameraPr
 
   // Start camera when component mounts
   React.useEffect(() => {
+    let mounted = true;
+    
     if (state.isSupported) {
-      actions.startCamera().catch(error => {
-        console.error('Failed to start camera:', error)
-        onError?.(error.message || 'Failed to start camera')
-      })
+      // Small delay to ensure component is fully mounted
+      const startTimeout = setTimeout(() => {
+        if (mounted) {
+          actions.startCamera({
+            width: 1280,
+            height: 720,
+            facingMode: 'environment'
+          }).catch(error => {
+            console.error('Failed to start camera:', error);
+            if (mounted) {
+              onError?.(error.message || 'Failed to start camera');
+            }
+          });
+        }
+      }, 100);
+      
+      return () => {
+        mounted = false;
+        clearTimeout(startTimeout);
+        actions.stopCamera();
+      };
     }
 
-    // Cleanup on unmount
     return () => {
-      actions.stopCamera()
-    }
+      mounted = false;
+    };
   }, [state.isSupported, actions, onError])
 
   // Handle capture
@@ -168,8 +186,12 @@ export default function CameraPreview({ onCapture, onCancel, onError }: CameraPr
           autoPlay
           playsInline
           muted
-          className={`w-full h-full object-cover ${state.isLoading ? 'opacity-0' : 'opacity-100'}`}
+          controls={false}
+          className={`w-full h-full object-cover transition-opacity duration-300 ${state.isLoading ? 'opacity-0' : 'opacity-100'}`}
           style={{ transform: 'scaleX(-1)' }} // Mirror for better UX
+          onLoadedMetadata={() => console.log('Video metadata loaded in component')}
+          onCanPlay={() => console.log('Video can play in component')}
+          onError={(e) => console.error('Video element error:', e)}
         />
         
         {/* Loading overlay */}
