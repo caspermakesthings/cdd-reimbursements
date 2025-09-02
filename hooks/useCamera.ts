@@ -100,11 +100,24 @@ export function useCamera(): UseCamera {
       if (videoRef.current) {
         const video = videoRef.current;
         
+        console.log('Setting up video element:', {
+          videoExists: !!video,
+          streamActive: stream.active,
+          streamTracks: stream.getTracks().length,
+          videoTracks: stream.getVideoTracks().length
+        });
+        
         // Clear any existing source
         video.srcObject = null;
         
+        // Force a small delay to ensure clean state
+        await new Promise(resolve => setTimeout(resolve, 50));
+        
         // Set up the new stream
         video.srcObject = stream;
+        video.muted = true;
+        video.playsInline = true;
+        video.autoplay = true;
         
         // Wait for video to be ready with multiple fallbacks
         await new Promise<void>((resolve, reject) => {
@@ -133,22 +146,36 @@ export function useCamera(): UseCamera {
           };
           
           const handleLoadedMetadata = () => {
-            console.log('Video metadata loaded');
+            console.log('Video metadata loaded:', {
+              videoWidth: video.videoWidth,
+              videoHeight: video.videoHeight,
+              readyState: video.readyState
+            });
             if (video.videoWidth > 0 && video.videoHeight > 0) {
               resolveOnce();
             }
           };
           
           const handleLoadedData = () => {
-            console.log('Video data loaded');
-            if (video.readyState >= 2) { // HAVE_CURRENT_DATA
+            console.log('Video data loaded:', {
+              readyState: video.readyState,
+              videoWidth: video.videoWidth,
+              videoHeight: video.videoHeight
+            });
+            if (video.readyState >= 2 && video.videoWidth > 0) { // HAVE_CURRENT_DATA
               resolveOnce();
             }
           };
           
           const handleCanPlay = () => {
-            console.log('Video can play');
-            resolveOnce();
+            console.log('Video can play:', {
+              readyState: video.readyState,
+              videoWidth: video.videoWidth,
+              videoHeight: video.videoHeight
+            });
+            if (video.videoWidth > 0 && video.videoHeight > 0) {
+              resolveOnce();
+            }
           };
           
           const handleError = (event: Event) => {
@@ -167,25 +194,46 @@ export function useCamera(): UseCamera {
           video.addEventListener('error', handleError);
           
           // Start playing
-          video.play().then(() => {
-            console.log('Video started playing');
-            // Some browsers resolve immediately, others need more time
-            if (video.readyState >= 2 && video.videoWidth > 0) {
-              resolveOnce();
-            }
-          }).catch((playError) => {
-            console.error('Video play error:', playError);
-            cleanup();
-            if (!resolved) {
-              resolved = true;
-              reject(new Error(`Failed to play video: ${playError.message}`));
-            }
-          });
+          const playPromise = video.play();
+          if (playPromise !== undefined) {
+            playPromise.then(() => {
+              console.log('Video started playing successfully');
+              // Some browsers resolve immediately, others need more time
+              if (video.readyState >= 2 && video.videoWidth > 0) {
+                resolveOnce();
+              }
+            }).catch((playError) => {
+              console.error('Video play error:', playError);
+              // Don't immediately fail - some browsers can still work
+              console.log('Continuing despite play error, checking video state...');
+              if (video.readyState >= 2 && video.videoWidth > 0) {
+                console.log('Video appears ready despite play error');
+                resolveOnce();
+              } else {
+                cleanup();
+                if (!resolved) {
+                  resolved = true;
+                  reject(new Error(`Failed to play video: ${playError.message}`));
+                }
+              }
+            });
+          }
           
           // Immediate check in case video is already ready
-          if (video.readyState >= 2 && video.videoWidth > 0 && video.videoHeight > 0) {
-            resolveOnce();
-          }
+          setTimeout(() => {
+            if (video.readyState >= 2 && video.videoWidth > 0 && video.videoHeight > 0) {
+              console.log('Video ready immediately');
+              resolveOnce();
+            }
+          }, 100);
+          
+          // Fallback check after longer delay
+          setTimeout(() => {
+            if (!resolved && video.readyState >= 1 && video.videoWidth > 0) {
+              console.log('Video ready after delay fallback');
+              resolveOnce();
+            }
+          }, 1000);
         });
       } else {
         throw new Error('Video element not available');

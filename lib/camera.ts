@@ -56,6 +56,14 @@ export async function getCameraDevices(): Promise<CameraDevice[]> {
 export async function requestCameraAccess(
   constraints: CameraConstraints = {}
 ): Promise<MediaStream> {
+  // Check for HTTPS requirement (except localhost)
+  if (location.protocol !== 'https:' && !location.hostname.includes('localhost') && location.hostname !== '127.0.0.1') {
+    throw new CameraError(
+      'Camera access requires HTTPS or localhost',
+      'HTTPS_REQUIRED'
+    );
+  }
+  
   if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
     throw new CameraError(
       'Camera API not supported in this browser',
@@ -63,10 +71,10 @@ export async function requestCameraAccess(
     );
   }
 
-  // Build constraints with fallbacks
+  // Build constraints with fallbacks - be more lenient initially
   const videoConstraints: MediaTrackConstraints = {
-    width: { ideal: constraints.width || 1280, max: 1920 },
-    height: { ideal: constraints.height || 720, max: 1080 },
+    width: { ideal: constraints.width || 1280 },
+    height: { ideal: constraints.height || 720 },
     facingMode: constraints.facingMode || 'environment'
   };
 
@@ -75,35 +83,66 @@ export async function requestCameraAccess(
     audio: false
   };
 
-  try {
-    console.log('Attempting camera access with constraints:', streamConstraints);
-    const stream = await navigator.mediaDevices.getUserMedia(streamConstraints);
+  // Try progressive fallback approach
+  const fallbackConstraints = [
+    streamConstraints, // Original constraints
+    { video: { facingMode: constraints.facingMode || 'environment' }, audio: false }, // Just facing mode
+    { video: true, audio: false }, // Most basic
+  ];
+  
+  let lastError: any;
+  
+  for (let i = 0; i < fallbackConstraints.length; i++) {
+    const currentConstraints = fallbackConstraints[i];
+    console.log(`Attempting camera access (attempt ${i + 1}/${fallbackConstraints.length}):`, currentConstraints);
     
-    // Verify we got a valid stream
-    if (!stream || !stream.active) {
-      throw new Error('Received inactive stream');
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia(currentConstraints);
+      
+      // Verify we got a valid stream
+      if (!stream || !stream.active) {
+        throw new Error('Received inactive stream');
+      }
+      
+      const videoTracks = stream.getVideoTracks();
+      if (videoTracks.length === 0) {
+        throw new Error('No video tracks in stream');
+      }
+      
+      const firstTrack = videoTracks[0];
+      const settings = firstTrack.getSettings();
+      
+      console.log(`✅ Camera access successful (attempt ${i + 1}):`, {
+        streamId: stream.id,
+        active: stream.active,
+        videoTracks: videoTracks.length,
+        trackState: firstTrack.readyState,
+        trackEnabled: firstTrack.enabled,
+        settings: settings
+      });
+      
+      return stream;
+    } catch (error: any) {
+      console.log(`❌ Camera attempt ${i + 1} failed:`, error);
+      lastError = error;
+      
+      // For certain errors, don't try fallbacks
+      if (error.name === 'NotAllowedError' || error.name === 'NotFoundError') {
+        break;
+      }
+      
+      continue;
     }
-    
-    const videoTracks = stream.getVideoTracks();
-    if (videoTracks.length === 0) {
-      throw new Error('No video tracks in stream');
-    }
-    
-    console.log('Camera access successful:', {
-      streamId: stream.id,
-      active: stream.active,
-      videoTracks: videoTracks.length,
-      settings: videoTracks[0].getSettings()
-    });
-    
-    return stream;
-  } catch (error: any) {
-    console.error('Camera access error:', error);
-    
-    let message = 'Failed to access camera';
-    let code = 'CAMERA_ACCESS_FAILED';
-
-    switch (error.name) {
+  }
+  
+  // If we get here, all attempts failed
+  console.error('All camera access attempts failed. Last error:', lastError);
+  
+  let message = 'Failed to access camera';
+  let code = 'CAMERA_ACCESS_FAILED';
+  
+  if (lastError) {
+    switch (lastError.name) {
       case 'NotAllowedError':
         message = 'Camera access denied. Please allow camera permissions and try again.';
         code = 'PERMISSION_DENIED';
@@ -117,22 +156,8 @@ export async function requestCameraAccess(
         code = 'CAMERA_IN_USE';
         break;
       case 'OverconstrainedError':
-        // Try with more relaxed constraints
-        console.log('Constraints too strict, trying with relaxed constraints');
-        try {
-          const relaxedConstraints: MediaStreamConstraints = {
-            video: {
-              facingMode: constraints.facingMode || 'environment'
-            },
-            audio: false
-          };
-          const fallbackStream = await navigator.mediaDevices.getUserMedia(relaxedConstraints);
-          console.log('Fallback camera access successful');
-          return fallbackStream;
-        } catch (fallbackError) {
-          message = 'Camera does not support the required quality. Please try a different camera.';
-          code = 'CONSTRAINTS_NOT_SATISFIED';
-        }
+        message = 'Camera does not support the required quality. Please try a different camera.';
+        code = 'CONSTRAINTS_NOT_SATISFIED';
         break;
       case 'SecurityError':
         message = 'Camera access blocked due to security restrictions. Please use HTTPS.';
@@ -143,13 +168,13 @@ export async function requestCameraAccess(
         code = 'ACCESS_CANCELLED';
         break;
       default:
-        if (error.message) {
-          message = `Camera error: ${error.message}`;
+        if (lastError.message) {
+          message = `Camera error: ${lastError.message}`;
         }
     }
-
-    throw new CameraError(message, code, error);
   }
+  
+  throw new CameraError(message, code, lastError);
 }
 
 export function stopCameraStream(stream: MediaStream): void {

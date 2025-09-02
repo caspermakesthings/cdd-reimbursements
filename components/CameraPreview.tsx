@@ -5,6 +5,7 @@ import { Button } from '@/components/ui/button'
 import { Camera, X, RotateCcw, Loader2 } from 'lucide-react'
 import { useCamera } from '@/hooks/useCamera'
 import ImagePreviewCrop from '@/components/ImagePreviewCrop'
+import { debugCameraAccess } from '@/lib/cameraDebug'
 
 interface CameraPreviewProps {
   onCapture: (file: File) => void
@@ -22,27 +23,39 @@ export default function CameraPreview({ onCapture, onCancel, onError }: CameraPr
     let mounted = true;
     
     if (state.isSupported) {
-      // Small delay to ensure component is fully mounted
-      const startTimeout = setTimeout(() => {
+      // Run debug first
+      debugCameraAccess().then(debugSuccess => {
+        console.log('Camera debug result:', debugSuccess);
+        
         if (mounted) {
-          actions.startCamera({
-            width: 1280,
-            height: 720,
-            facingMode: 'environment'
-          }).catch(error => {
-            console.error('Failed to start camera:', error);
+          // Small delay to ensure component is fully mounted
+          const startTimeout = setTimeout(() => {
             if (mounted) {
-              onError?.(error.message || 'Failed to start camera');
+              actions.startCamera({
+                width: 1280,
+                height: 720,
+                facingMode: 'environment'
+              }).catch(error => {
+                console.error('Failed to start camera:', error);
+                if (mounted) {
+                  onError?.(error.message || 'Failed to start camera');
+                }
+              });
             }
-          });
+          }, 200);
+          
+          return () => {
+            mounted = false;
+            clearTimeout(startTimeout);
+            actions.stopCamera();
+          };
         }
-      }, 100);
-      
-      return () => {
-        mounted = false;
-        clearTimeout(startTimeout);
-        actions.stopCamera();
-      };
+      }).catch(debugError => {
+        console.error('Debug failed:', debugError);
+        if (mounted) {
+          onError?.('Camera debugging failed: ' + debugError.message);
+        }
+      });
     }
 
     return () => {
@@ -188,10 +201,34 @@ export default function CameraPreview({ onCapture, onCancel, onError }: CameraPr
           muted
           controls={false}
           className={`w-full h-full object-cover transition-opacity duration-300 ${state.isLoading ? 'opacity-0' : 'opacity-100'}`}
-          style={{ transform: 'scaleX(-1)' }} // Mirror for better UX
-          onLoadedMetadata={() => console.log('Video metadata loaded in component')}
-          onCanPlay={() => console.log('Video can play in component')}
-          onError={(e) => console.error('Video element error:', e)}
+          style={{ 
+            transform: 'scaleX(-1)',
+            minWidth: '100%',
+            minHeight: '100%'
+          }}
+          onLoadedMetadata={(e) => {
+            const video = e.target as HTMLVideoElement;
+            console.log('Video metadata loaded in component:', {
+              videoWidth: video.videoWidth,
+              videoHeight: video.videoHeight,
+              readyState: video.readyState
+            });
+          }}
+          onCanPlay={(e) => {
+            const video = e.target as HTMLVideoElement;
+            console.log('Video can play in component:', {
+              videoWidth: video.videoWidth,
+              videoHeight: video.videoHeight,
+              readyState: video.readyState
+            });
+          }}
+          onLoadStart={() => console.log('Video load started')}
+          onLoadedData={() => console.log('Video data loaded in component')}
+          onPlaying={() => console.log('Video is playing')}
+          onError={(e) => {
+            console.error('Video element error:', e);
+            console.error('Video error details:', (e.target as HTMLVideoElement).error);
+          }}
         />
         
         {/* Loading overlay */}
