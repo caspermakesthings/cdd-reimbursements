@@ -2,7 +2,7 @@
 
 import React from 'react'
 import { Button } from '@/components/ui/button'
-import { Image, Upload } from 'lucide-react'
+import { Image as ImageIcon, Upload } from 'lucide-react'
 import { useToast } from '@/components/ui/use-toast'
 
 interface ReceiptScannerProps {
@@ -81,7 +81,7 @@ export default function ReceiptScanner({
             disabled={disabled}
             className="h-14 md:h-12 bg-slate-900 hover:bg-slate-800 text-white rounded-xl md:rounded-lg shadow-md active:scale-95 transition-all duration-150"
           >
-            <Image className="h-5 w-5 mr-2" />
+            <ImageIcon className="h-5 w-5 mr-2" aria-hidden="true" />
             Select Photo
           </Button>
 
@@ -103,7 +103,7 @@ export default function ReceiptScanner({
           <p className="font-medium mb-2 md:mb-1 text-slate-700">Receipt Options:</p>
           <ul className="space-y-2 md:space-y-1 text-xs">
             <li className="flex items-center">
-              <Image className="h-3 w-3 mr-2 flex-shrink-0 text-slate-600" />
+              <ImageIcon className="h-3 w-3 mr-2 flex-shrink-0 text-slate-600" aria-hidden="true" />
               <span>Select a photo from your photo library</span>
             </li>
             <li className="flex items-center">

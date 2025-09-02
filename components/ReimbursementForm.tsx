@@ -641,7 +641,7 @@ export default function ReimbursementForm() {
           {/* Reimbursement Policy Reference */}
           <div className="text-xs text-slate-600 bg-slate-50 p-3 rounded-lg">
             <p className="font-medium mb-1">Reimbursement Policy:</p>
-            <p>All reimbursements are submitted under CDD Advisors' accountable plan as defined by IRS Reg. §1.62-2. By submitting this form, you certify that this expense was incurred for legitimate business purposes and complies with company policy.</p>
+            <p>All reimbursements are submitted under CDD Advisors&apos; accountable plan as defined by IRS Reg. §1.62-2. By submitting this form, you certify that this expense was incurred for legitimate business purposes and complies with company policy.</p>
           </div>
 
           <div className="space-y-3">
