@@ -51,6 +51,12 @@ export interface ReimbursementApiResponse {
   path?: string
 }
 
+export interface BatchReimbursementData {
+  items: ReimbursementFormData[]
+  eventDescription?: string  // Optional description for the entire batch (e.g., "Q4 Planning Meeting with ViewSonic")
+  totalAmount?: number  // Total of all reimbursements
+}
+
 export interface DriveStatusResponse {
   connected: boolean
 }

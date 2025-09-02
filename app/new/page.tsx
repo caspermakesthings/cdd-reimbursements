@@ -1,9 +1,15 @@
+'use client'
+
+import { useState } from "react"
 import Link from "next/link"
 import { Button } from "@/components/ui/button"
 import ReimbursementForm from "@/components/ReimbursementForm"
-import { ArrowLeft } from "lucide-react"
+import BatchReimbursementForm from "@/components/BatchReimbursementForm"
+import { ArrowLeft, FileText, Layers } from "lucide-react"
 
 export default function NewReimbursementPage() {
+  const [mode, setMode] = useState<'single' | 'batch'>('single')
+  
   return (
     <div className="min-h-screen bg-slate-50 md:bg-slate-50">
       {/* Mobile-First Header */}
@@ -43,7 +49,10 @@ export default function NewReimbursementPage() {
             New Reimbursement
           </h2>
           <p className="text-sm text-slate-600 text-center px-4">
-            Fill out the form to generate your PDF
+            {mode === 'single' 
+              ? 'Fill out the form to generate your PDF'
+              : 'Add multiple expenses for batch processing'
+            }
           </p>
         </div>
 
@@ -54,7 +63,40 @@ export default function NewReimbursementPage() {
               New Reimbursement Request
             </h2>
             <p className="text-lg text-slate-600">
-              Complete the form below to generate a professional reimbursement PDF
+              {mode === 'single' 
+                ? 'Complete the form below to generate a professional reimbursement PDF'
+                : 'Add multiple expenses from the same event or night for batch processing'
+              }
+            </p>
+          </div>
+        </div>
+
+        {/* Mode Selector */}
+        <div className="px-4 md:max-w-4xl md:mx-auto md:px-6 pb-4">
+          <div className="bg-white rounded-lg shadow-sm border border-slate-200 p-4">
+            <div className="flex flex-col sm:flex-row gap-3">
+              <Button
+                variant={mode === 'single' ? 'default' : 'outline'}
+                onClick={() => setMode('single')}
+                className="flex-1"
+              >
+                <FileText className="w-4 h-4 mr-2" />
+                Single Expense
+              </Button>
+              <Button
+                variant={mode === 'batch' ? 'default' : 'outline'}
+                onClick={() => setMode('batch')}
+                className="flex-1"
+              >
+                <Layers className="w-4 h-4 mr-2" />
+                Multiple Expenses
+              </Button>
+            </div>
+            <p className="text-xs text-slate-600 mt-3 text-center">
+              {mode === 'single' 
+                ? 'Submit one expense at a time with a receipt'
+                : 'Perfect for multiple receipts from the same event or night'
+              }
             </p>
           </div>
         </div>
@@ -62,7 +104,7 @@ export default function NewReimbursementPage() {
         {/* Form Container */}
         <div className="px-0 md:max-w-4xl md:mx-auto md:px-6 md:pb-12">
           <div className="bg-white md:rounded-lg md:shadow-sm md:border md:border-slate-200 md:p-8">
-            <ReimbursementForm />
+            {mode === 'single' ? <ReimbursementForm /> : <BatchReimbursementForm />}
           </div>
         </div>
       </main>

@@ -380,3 +380,355 @@ export async function mergeWithReceipt(
   const mergedPdfBytes = await coverPdf.save()
   return Buffer.from(mergedPdfBytes)
 }
+
+export async function buildBatchCoverPage(
+  expenses: any[],
+  receiptFiles: File[],
+  batchId: string,
+  eventDescription: string,
+  totalAmount: number
+): Promise<Uint8Array> {
+  const pdfDoc = await PDFDocument.create()
+  const page = pdfDoc.addPage([612, 792]) // Letter size
+  
+  const helveticaFont = await pdfDoc.embedFont(StandardFonts.Helvetica)
+  const helveticaBoldFont = await pdfDoc.embedFont(StandardFonts.HelveticaBold)
+  
+  const { width, height } = page.getSize()
+  
+  // Header
+  page.drawText('BATCH REIMBURSEMENT REQUEST', {
+    x: 50,
+    y: height - 80,
+    size: 22,
+    font: helveticaBoldFont,
+    color: rgb(0, 0, 0)
+  })
+  
+  // ID and Date
+  page.drawText(`Batch ID: ${batchId}`, {
+    x: 50,
+    y: height - 110,
+    size: 11,
+    font: helveticaFont,
+    color: rgb(0.3, 0.3, 0.3)
+  })
+  
+  page.drawText(`Submitted: ${formatDate(new Date().toISOString().split('T')[0])}`, {
+    x: 300,
+    y: height - 110,
+    size: 11,
+    font: helveticaFont,
+    color: rgb(0.3, 0.3, 0.3)
+  })
+  
+  // Event Description if provided
+  let currentY = height - 140
+  
+  if (eventDescription) {
+    page.drawText('EVENT/OCCASION:', {
+      x: 50,
+      y: currentY,
+      size: 12,
+      font: helveticaBoldFont,
+      color: rgb(0, 0, 0)
+    })
+    
+    currentY -= 20
+    page.drawText(eventDescription, {
+      x: 50,
+      y: currentY,
+      size: 11,
+      font: helveticaFont,
+      color: rgb(0, 0, 0)
+    })
+    
+    currentY -= 30
+  }
+  
+  // Summary Section
+  page.drawText('EXPENSE SUMMARY:', {
+    x: 50,
+    y: currentY,
+    size: 12,
+    font: helveticaBoldFont,
+    color: rgb(0, 0, 0)
+  })
+  
+  currentY -= 25
+  
+  // Table headers
+  const tableX = 50
+  const columnWidths = {
+    number: 30,
+    merchant: 150,
+    date: 80,
+    category: 100,
+    amount: 80,
+    currency: 50
+  }
+  
+  // Draw table header
+  page.drawText('#', {
+    x: tableX,
+    y: currentY,
+    size: 10,
+    font: helveticaBoldFont,
+    color: rgb(0, 0, 0)
+  })
+  
+  page.drawText('Merchant', {
+    x: tableX + columnWidths.number,
+    y: currentY,
+    size: 10,
+    font: helveticaBoldFont,
+    color: rgb(0, 0, 0)
+  })
+  
+  page.drawText('Date', {
+    x: tableX + columnWidths.number + columnWidths.merchant,
+    y: currentY,
+    size: 10,
+    font: helveticaBoldFont,
+    color: rgb(0, 0, 0)
+  })
+  
+  page.drawText('Category', {
+    x: tableX + columnWidths.number + columnWidths.merchant + columnWidths.date,
+    y: currentY,
+    size: 10,
+    font: helveticaBoldFont,
+    color: rgb(0, 0, 0)
+  })
+  
+  page.drawText('Amount', {
+    x: tableX + columnWidths.number + columnWidths.merchant + columnWidths.date + columnWidths.category,
+    y: currentY,
+    size: 10,
+    font: helveticaBoldFont,
+    color: rgb(0, 0, 0)
+  })
+  
+  currentY -= 5
+  
+  // Draw horizontal line
+  page.drawLine({
+    start: { x: tableX, y: currentY },
+    end: { x: width - 50, y: currentY },
+    thickness: 0.5,
+    color: rgb(0.5, 0.5, 0.5)
+  })
+  
+  currentY -= 20
+  
+  // Add expense rows
+  expenses.forEach((expense, index) => {
+    // Check if we need a new page
+    if (currentY < 150) {
+      const newPage = pdfDoc.addPage([612, 792])
+      currentY = height - 80
+      
+      newPage.drawText('BATCH REIMBURSEMENT REQUEST (Continued)', {
+        x: 50,
+        y: currentY,
+        size: 16,
+        font: helveticaBoldFont,
+        color: rgb(0, 0, 0)
+      })
+      
+      currentY -= 40
+    }
+    
+    // Draw row data
+    page.drawText(`${index + 1}`, {
+      x: tableX,
+      y: currentY,
+      size: 10,
+      font: helveticaFont,
+      color: rgb(0, 0, 0)
+    })
+    
+    // Truncate merchant name if too long
+    const merchantName = expense.merchant.length > 25 
+      ? expense.merchant.substring(0, 22) + '...' 
+      : expense.merchant
+    
+    page.drawText(merchantName, {
+      x: tableX + columnWidths.number,
+      y: currentY,
+      size: 10,
+      font: helveticaFont,
+      color: rgb(0, 0, 0)
+    })
+    
+    page.drawText(formatDate(expense.date), {
+      x: tableX + columnWidths.number + columnWidths.merchant,
+      y: currentY,
+      size: 10,
+      font: helveticaFont,
+      color: rgb(0, 0, 0)
+    })
+    
+    // Truncate category if too long
+    const categoryName = expense.category.length > 15 
+      ? expense.category.substring(0, 12) + '...' 
+      : expense.category
+    
+    page.drawText(categoryName, {
+      x: tableX + columnWidths.number + columnWidths.merchant + columnWidths.date,
+      y: currentY,
+      size: 10,
+      font: helveticaFont,
+      color: rgb(0, 0, 0)
+    })
+    
+    page.drawText(`${formatCurrency(expense.total, expense.currency)}`, {
+      x: tableX + columnWidths.number + columnWidths.merchant + columnWidths.date + columnWidths.category,
+      y: currentY,
+      size: 10,
+      font: helveticaFont,
+      color: rgb(0, 0, 0)
+    })
+    
+    currentY -= 20
+  })
+  
+  // Draw final line
+  currentY -= 5
+  page.drawLine({
+    start: { x: tableX, y: currentY },
+    end: { x: width - 50, y: currentY },
+    thickness: 0.5,
+    color: rgb(0.5, 0.5, 0.5)
+  })
+  
+  // Total Box
+  currentY -= 40
+  const boxWidth = 200
+  const boxHeight = 60
+  const boxX = width - boxWidth - 50
+  
+  page.drawRectangle({
+    x: boxX,
+    y: currentY - boxHeight,
+    width: boxWidth,
+    height: boxHeight,
+    borderColor: rgb(0, 0, 0),
+    borderWidth: 1
+  })
+  
+  page.drawText('TOTAL (USD):', {
+    x: boxX + 10,
+    y: currentY - 25,
+    size: 12,
+    font: helveticaBoldFont,
+    color: rgb(0, 0, 0)
+  })
+  
+  page.drawText(`$${totalAmount.toFixed(2)}`, {
+    x: boxX + 10,
+    y: currentY - 45,
+    size: 14,
+    font: helveticaBoldFont,
+    color: rgb(0, 0, 0)
+  })
+  
+  // Compliance statement
+  currentY -= 100
+  page.drawText('COMPLIANCE STATEMENT:', {
+    x: 50,
+    y: currentY,
+    size: 10,
+    font: helveticaBoldFont,
+    color: rgb(0, 0, 0)
+  })
+  
+  currentY -= 15
+  const complianceText = "All reimbursements are submitted under CDD Advisors' accountable plan as defined by IRS Reg. §1.62-2."
+  page.drawText(complianceText, {
+    x: 50,
+    y: currentY,
+    size: 9,
+    font: helveticaFont,
+    color: rgb(0, 0, 0)
+  })
+  
+  currentY -= 15
+  page.drawText("These expenses were incurred for legitimate business purposes and comply with company policy.", {
+    x: 50,
+    y: currentY,
+    size: 9,
+    font: helveticaFont,
+    color: rgb(0, 0, 0)
+  })
+  
+  // Add page numbers to receipts note
+  currentY -= 30
+  page.drawText(`Individual receipts attached (Pages 2-${expenses.length + 1})`, {
+    x: 50,
+    y: currentY,
+    size: 10,
+    font: helveticaFont,
+    color: rgb(0.3, 0.3, 0.3)
+  })
+  
+  return pdfDoc.save()
+}
+
+export async function mergeWithMultipleReceipts(
+  coverPdfBytes: Uint8Array,
+  receiptFiles: File[]
+): Promise<Buffer> {
+  const coverPdf = await PDFDocument.load(coverPdfBytes)
+  
+  for (const receiptFile of receiptFiles) {
+    if (receiptFile.type === 'application/pdf') {
+      const receiptBytes = await receiptFile.arrayBuffer()
+      const receiptPdf = await PDFDocument.load(receiptBytes)
+      const receiptPages = await coverPdf.copyPages(receiptPdf, receiptPdf.getPageIndices())
+      
+      receiptPages.forEach((page) => coverPdf.addPage(page))
+    } else {
+      const imageBytes = await receiptFile.arrayBuffer()
+      let image
+      
+      if (receiptFile.type === 'image/jpeg' || receiptFile.type === 'image/jpg') {
+        image = await coverPdf.embedJpg(imageBytes)
+      } else if (receiptFile.type === 'image/png') {
+        image = await coverPdf.embedPng(imageBytes)
+      } else {
+        continue // Skip unsupported image types
+      }
+      
+      const page = coverPdf.addPage()
+      const { width, height } = page.getSize()
+      
+      const imageAspectRatio = image.width / image.height
+      const pageAspectRatio = width / height
+      
+      let imageWidth: number
+      let imageHeight: number
+      
+      if (imageAspectRatio > pageAspectRatio) {
+        imageWidth = width - 40
+        imageHeight = imageWidth / imageAspectRatio
+      } else {
+        imageHeight = height - 40
+        imageWidth = imageHeight * imageAspectRatio
+      }
+      
+      const x = (width - imageWidth) / 2
+      const y = (height - imageHeight) / 2
+      
+      page.drawImage(image, {
+        x,
+        y,
+        width: imageWidth,
+        height: imageHeight
+      })
+    }
+  }
+  
+  const mergedPdfBytes = await coverPdf.save()
+  return Buffer.from(mergedPdfBytes)
+}
