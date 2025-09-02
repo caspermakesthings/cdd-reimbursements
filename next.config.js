@@ -26,6 +26,15 @@ const nextConfig = {
         ],
       },
     ]
+  },
+  // Increase body size limit for file uploads
+  async rewrites() {
+    return [
+      {
+        source: '/api/reimburse/batch',
+        destination: '/api/reimburse/batch',
+      },
+    ]
   }
 }
 

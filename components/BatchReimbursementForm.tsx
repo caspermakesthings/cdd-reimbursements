@@ -139,6 +139,34 @@ export default function BatchReimbursementForm() {
       return
     }
 
+    // Validate file sizes before upload
+    const maxFileSize = 10 * 1024 * 1024 // 10MB per file
+    const totalMaxSize = 50 * 1024 * 1024 // 50MB total
+    
+    let totalSize = 0
+    for (const expense of expenses) {
+      if (expense.receiptFile) {
+        if (expense.receiptFile.size > maxFileSize) {
+          toast({
+            title: "File Too Large",
+            description: `Receipt for ${expense.merchant} is too large (${(expense.receiptFile.size / 1024 / 1024).toFixed(1)}MB). Please compress or resize the image.`,
+            variant: "destructive"
+          })
+          return
+        }
+        totalSize += expense.receiptFile.size
+      }
+    }
+    
+    if (totalSize > totalMaxSize) {
+      toast({
+        title: "Total Size Too Large",
+        description: `Total file size (${(totalSize / 1024 / 1024).toFixed(1)}MB) exceeds the limit. Please reduce file sizes or split into smaller batches.`,
+        variant: "destructive"
+      })
+      return
+    }
+
     setIsSubmitting(true)
 
     try {
@@ -244,6 +272,11 @@ export default function BatchReimbursementForm() {
     return sum + (exp.total / rate)
   }, 0)
 
+  // Calculate total file size for upload
+  const totalFileSize = expenses.reduce((sum, exp) => {
+    return sum + (exp.receiptFile?.size || 0)
+  }, 0)
+
   const watchedCategory = form.watch('category')
   const watchedCurrency = form.watch('currency')
   const showTravelFields = watchedCategory === 'Travel'
@@ -277,6 +310,10 @@ export default function BatchReimbursementForm() {
             Add a description to group these expenses together (appears on the cover page)
           </p>
         </div>
+        <div className="mt-3 p-2 bg-blue-100 rounded text-xs text-blue-800">
+          <strong>Upload Limits:</strong> Up to 15 expenses, 10MB per file, 50MB total. 
+          For best performance, keep images under 5MB each.
+        </div>
       </div>
 
       {/* Expense List */}
@@ -284,8 +321,9 @@ export default function BatchReimbursementForm() {
         <div className="space-y-4">
           <div className="flex justify-between items-center">
             <h4 className="font-medium text-slate-900">Added Expenses ({expenses.length})</h4>
-            <div className="text-sm text-slate-600">
-              Total: ${totalAmount.toFixed(2)} USD
+            <div className="text-sm text-slate-600 space-y-1">
+              <div>Total: ${totalAmount.toFixed(2)} USD</div>
+              <div>Upload Size: {(totalFileSize / 1024 / 1024).toFixed(1)}MB</div>
             </div>
           </div>
           
@@ -312,7 +350,7 @@ export default function BatchReimbursementForm() {
                     {expense.receiptFile && (
                       <div className="mt-2 flex items-center gap-2 text-sm text-green-600">
                         <FileText className="w-4 h-4" />
-                        Receipt attached: {expense.receiptFile.name}
+                        Receipt attached: {expense.receiptFile.name} ({(expense.receiptFile.size / 1024 / 1024).toFixed(1)}MB)
                       </div>
                     )}
                   </div>
@@ -686,7 +724,21 @@ export default function BatchReimbursementForm() {
 
       {/* Submit Batch Button */}
       {expenses.length > 0 && !isAddingNew && !editingId && (
-        <div className="pt-4 border-t">
+        <div className="pt-4 border-t space-y-3">
+          {/* File size warning */}
+          {totalFileSize > 25 * 1024 * 1024 && (
+            <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-3">
+              <div className="flex items-center gap-2 text-yellow-800">
+                <div className="w-2 h-2 bg-yellow-500 rounded-full"></div>
+                <span className="text-sm font-medium">Large Upload Detected</span>
+              </div>
+              <p className="text-sm text-yellow-700 mt-1">
+                Total upload size is {(totalFileSize / 1024 / 1024).toFixed(1)}MB. 
+                Large uploads may take longer to process. Consider splitting into smaller batches if you encounter issues.
+              </p>
+            </div>
+          )}
+          
           <Button
             onClick={handleSubmitBatch}
             className="w-full h-14 bg-slate-900 hover:bg-slate-800 text-white"

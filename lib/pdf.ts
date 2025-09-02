@@ -681,51 +681,68 @@ export async function mergeWithMultipleReceipts(
 ): Promise<Buffer> {
   const coverPdf = await PDFDocument.load(coverPdfBytes)
   
-  for (const receiptFile of receiptFiles) {
-    if (receiptFile.type === 'application/pdf') {
-      const receiptBytes = await receiptFile.arrayBuffer()
-      const receiptPdf = await PDFDocument.load(receiptBytes)
-      const receiptPages = await coverPdf.copyPages(receiptPdf, receiptPdf.getPageIndices())
-      
-      receiptPages.forEach((page) => coverPdf.addPage(page))
-    } else {
-      const imageBytes = await receiptFile.arrayBuffer()
-      let image
-      
-      if (receiptFile.type === 'image/jpeg' || receiptFile.type === 'image/jpg') {
-        image = await coverPdf.embedJpg(imageBytes)
-      } else if (receiptFile.type === 'image/png') {
-        image = await coverPdf.embedPng(imageBytes)
-      } else {
-        continue // Skip unsupported image types
+  // Process files in smaller chunks to avoid memory issues with large batches
+  const chunkSize = 5 // Process 5 files at a time
+  for (let i = 0; i < receiptFiles.length; i += chunkSize) {
+    const chunk = receiptFiles.slice(i, i + chunkSize)
+    
+    for (const receiptFile of chunk) {
+      try {
+        if (receiptFile.type === 'application/pdf') {
+          const receiptBytes = await receiptFile.arrayBuffer()
+          const receiptPdf = await PDFDocument.load(receiptBytes)
+          const receiptPages = await coverPdf.copyPages(receiptPdf, receiptPdf.getPageIndices())
+          
+          receiptPages.forEach((page) => coverPdf.addPage(page))
+        } else {
+          const imageBytes = await receiptFile.arrayBuffer()
+          let image
+          
+          if (receiptFile.type === 'image/jpeg' || receiptFile.type === 'image/jpg') {
+            image = await coverPdf.embedJpg(imageBytes)
+          } else if (receiptFile.type === 'image/png') {
+            image = await coverPdf.embedPng(imageBytes)
+          } else {
+            continue // Skip unsupported image types
+          }
+          
+          const page = coverPdf.addPage()
+          const { width, height } = page.getSize()
+          
+          const imageAspectRatio = image.width / image.height
+          const pageAspectRatio = width / height
+          
+          let imageWidth: number
+          let imageHeight: number
+          
+          if (imageAspectRatio > pageAspectRatio) {
+            imageWidth = width - 40
+            imageHeight = imageWidth / imageAspectRatio
+          } else {
+            imageHeight = height - 40
+            imageWidth = imageHeight * imageAspectRatio
+          }
+          
+          const x = (width - imageWidth) / 2
+          const y = (height - imageHeight) / 2
+          
+          page.drawImage(image, {
+            x,
+            y,
+            width: imageWidth,
+            height: imageHeight
+          })
+        }
+      } catch (error) {
+        console.error(`Error processing receipt file ${receiptFile.name}:`, error)
+        // Continue processing other files even if one fails
+        continue
       }
-      
-      const page = coverPdf.addPage()
-      const { width, height } = page.getSize()
-      
-      const imageAspectRatio = image.width / image.height
-      const pageAspectRatio = width / height
-      
-      let imageWidth: number
-      let imageHeight: number
-      
-      if (imageAspectRatio > pageAspectRatio) {
-        imageWidth = width - 40
-        imageHeight = imageWidth / imageAspectRatio
-      } else {
-        imageHeight = height - 40
-        imageWidth = imageHeight * imageAspectRatio
-      }
-      
-      const x = (width - imageWidth) / 2
-      const y = (height - imageHeight) / 2
-      
-      page.drawImage(image, {
-        x,
-        y,
-        width: imageWidth,
-        height: imageHeight
-      })
+    }
+    
+    // Small delay between chunks to prevent memory buildup
+    if (i + chunkSize < receiptFiles.length) {
+      await new Promise(resolve => setTimeout(resolve, 100))
     }
   }
   
