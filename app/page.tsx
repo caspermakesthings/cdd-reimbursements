@@ -3,85 +3,94 @@ import { Button } from "@/components/ui/button"
 
 export default function HomePage() {
   return (
-    <div className="container mx-auto px-4 py-12">
-      <div className="max-w-4xl mx-auto text-center">
-        {/* Hero Section */}
-        <div className="mb-12">
-          <h1 className="text-4xl font-bold text-gray-900 mb-4">
-            CDD Reimbursements
-          </h1>
-          <p className="text-xl text-gray-600 mb-8">
-            Submit standardized reimbursement requests with automatic PDF generation
-          </p>
-        </div>
-
-
-        {/* Main CTAs */}
-        <div className="grid md:grid-cols-2 gap-6 mb-12">
-          <div className="bg-white rounded-lg shadow-sm border p-8">
-            <h3 className="text-2xl font-semibold text-gray-900 mb-4">
-              Submit Reimbursement
-            </h3>
-            <p className="text-gray-600 mb-6">
-              Create a new reimbursement request with receipt attachment. 
-              Get a professional PDF with cover page and receipt for easy submission.
-            </p>
-            <Link href="/new">
-              <Button size="lg" className="w-full">
-                New Reimbursement Request
-              </Button>
-            </Link>
-          </div>
-
-          <div className="bg-white rounded-lg shadow-sm border p-8">
-            <h3 className="text-2xl font-semibold text-gray-900 mb-4">
-              How It Works
-            </h3>
-            <ul className="text-left text-gray-600 space-y-2 mb-6">
-              <li>• Fill out the standardized reimbursement form</li>
-              <li>• Upload or scan your receipt (image or PDF)</li>
-              <li>• Get a professional PDF with cover page</li>
-              <li>• Download ready for submission to finance</li>
-            </ul>
-            <div className="text-sm text-gray-500">
-              Streamlined workflow for quick reimbursement processing
+    <div className="min-h-screen bg-slate-50">
+      {/* Mobile Header */}
+      <header className="bg-white border-b border-slate-200 sticky top-0 z-50">
+        <div className="px-4 py-3 md:max-w-6xl md:mx-auto md:px-6 md:py-4">
+          <div className="flex items-center justify-center md:justify-between">
+            <div className="flex items-center space-x-3">
+              <div className="w-8 h-8 bg-slate-900 rounded flex items-center justify-center">
+                <span className="text-white text-sm font-bold">C</span>
+              </div>
+              <div>
+                <h1 className="text-lg md:text-xl font-semibold text-slate-900">CDD Ltd.</h1>
+                <p className="text-xs md:text-sm text-slate-600 hidden sm:block">New Age Research Solutions</p>
+              </div>
             </div>
           </div>
         </div>
+      </header>
 
-        {/* Features */}
-        <div className="grid md:grid-cols-3 gap-6">
-          <div className="text-center">
-            <div className="w-12 h-12 bg-blue-100 rounded-lg flex items-center justify-center mx-auto mb-4">
-              📄
+      {/* Main Content */}
+      <main className="pb-safe">
+        {/* Mobile-first Hero */}
+        <div className="px-4 pt-8 pb-6 md:max-w-6xl md:mx-auto md:px-6 md:py-16">
+          <div className="max-w-2xl mx-auto text-center">
+            {/* Page Header */}
+            <div className="mb-8 md:mb-12">
+              <h2 className="text-2xl md:text-4xl font-bold text-slate-900 mb-3 md:mb-4 leading-tight">
+                Expense Reimbursements
+              </h2>
+              <p className="text-base md:text-lg text-slate-600 px-2 md:px-0">
+                Professional PDF generation for expense reports
+              </p>
             </div>
-            <h4 className="font-semibold mb-2">Professional PDFs</h4>
-            <p className="text-sm text-gray-600">
-              Generated with detailed cover pages and merged receipts
-            </p>
+
+            {/* Main Action - Mobile Optimized */}
+            <div className="mb-8 md:mb-8">
+              <Link href="/new">
+                <Button size="lg" className="w-full h-14 md:h-12 text-lg md:text-base font-medium bg-slate-900 hover:bg-slate-800 text-white rounded-xl md:rounded-lg shadow-lg active:scale-95 transition-all duration-150">
+                  Create New Reimbursement
+                </Button>
+              </Link>
+            </div>
+
+            {/* Features - Mobile Optimized */}
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 md:gap-6 mt-8 md:mt-12">
+              <div className="bg-white rounded-xl p-6 border border-slate-100 shadow-sm">
+                <div className="w-10 h-10 md:w-12 md:h-12 bg-slate-100 rounded-lg flex items-center justify-center mx-auto mb-3">
+                  <span className="text-slate-700 text-lg">📄</span>
+                </div>
+                <h3 className="font-medium text-slate-900 mb-2 text-sm md:text-base">Professional PDFs</h3>
+                <p className="text-xs md:text-sm text-slate-600 leading-relaxed">
+                  Generate formatted reports with receipts
+                </p>
+              </div>
+
+              <div className="bg-white rounded-xl p-6 border border-slate-100 shadow-sm">
+                <div className="w-10 h-10 md:w-12 md:h-12 bg-slate-100 rounded-lg flex items-center justify-center mx-auto mb-3">
+                  <span className="text-slate-700 text-lg">📱</span>
+                </div>
+                <h3 className="font-medium text-slate-900 mb-2 text-sm md:text-base">Photo Selection</h3>
+                <p className="text-xs md:text-sm text-slate-600 leading-relaxed">
+                  Select receipts from your photo library
+                </p>
+              </div>
+
+              <div className="bg-white rounded-xl p-6 border border-slate-100 shadow-sm sm:col-span-1 col-span-1">
+                <div className="w-10 h-10 md:w-12 md:h-12 bg-slate-100 rounded-lg flex items-center justify-center mx-auto mb-3">
+                  <span className="text-slate-700 text-lg">✓</span>
+                </div>
+                <h3 className="font-medium text-slate-900 mb-2 text-sm md:text-base">Form Validation</h3>
+                <p className="text-xs md:text-sm text-slate-600 leading-relaxed">
+                  Built-in field validation and checking
+                </p>
+              </div>
+            </div>
           </div>
+        </div>
+      </main>
 
+      {/* Footer - Hidden on mobile, shown on desktop */}
+      <footer className="hidden md:block bg-white border-t border-slate-200 mt-16">
+        <div className="max-w-6xl mx-auto px-6 py-8">
           <div className="text-center">
-            <div className="w-12 h-12 bg-green-100 rounded-lg flex items-center justify-center mx-auto mb-4">
-              📱
-            </div>
-            <h4 className="font-semibold mb-2">Receipt Scanning</h4>
-            <p className="text-sm text-gray-600">
-              Capture receipts directly with your device camera
-            </p>
-          </div>
-
-          <div className="text-center">
-            <div className="w-12 h-12 bg-purple-100 rounded-lg flex items-center justify-center mx-auto mb-4">
-              ✅
-            </div>
-            <h4 className="font-semibold mb-2">Form Validation</h4>
-            <p className="text-sm text-gray-600">
-              Ensure all required fields and proper file formats
+            <p className="text-sm text-slate-600">
+              © {new Date().getFullYear()} CDD Ltd. All rights reserved.
             </p>
           </div>
         </div>
-      </div>
+      </footer>
     </div>
   )
 }

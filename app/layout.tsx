@@ -7,8 +7,8 @@ import "./globals.css"
 const inter = Inter({ subsets: ["latin"] })
 
 export const metadata: Metadata = {
-  title: "CDD Reimbursements",
-  description: "Submit and manage reimbursement requests with OneDrive integration",
+  title: "CDD Ltd. – Reimbursements",
+  description: "Professional expense reimbursement PDF generation system",
 }
 
 export default function RootLayout({
@@ -18,11 +18,15 @@ export default function RootLayout({
 }) {
   return (
     <html lang="en">
+      <head>
+        <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+        <meta name="apple-mobile-web-app-capable" content="yes" />
+        <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+        <meta name="theme-color" content="#0f172a" />
+      </head>
       <body className={inter.className}>
         <Providers>
-          <main className="min-h-screen bg-gray-50">
-            {children}
-          </main>
+          {children}
           <Toaster />
         </Providers>
       </body>

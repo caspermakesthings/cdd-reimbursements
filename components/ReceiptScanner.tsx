@@ -2,10 +2,8 @@
 
 import React from 'react'
 import { Button } from '@/components/ui/button'
-import { Camera, Upload } from 'lucide-react'
-import CameraPreview from '@/components/CameraPreview'
+import { Image, Upload } from 'lucide-react'
 import ImagePreviewCrop from '@/components/ImagePreviewCrop'
-import { checkCameraSupport } from '@/lib/camera'
 import { useToast } from '@/components/ui/use-toast'
 
 interface ReceiptScannerProps {
@@ -19,16 +17,10 @@ export default function ReceiptScanner({
   accept = ".jpg,.jpeg,.png,.heic,.pdf",
   disabled = false 
 }: ReceiptScannerProps) {
-  const [showCamera, setShowCamera] = React.useState(false)
-  const [cameraSupported, setCameraSupported] = React.useState<boolean | null>(null)
   const [uploadedFile, setUploadedFile] = React.useState<File | null>(null)
   const { toast } = useToast()
   const fileInputRef = React.useRef<HTMLInputElement>(null)
-
-  // Check camera support on mount
-  React.useEffect(() => {
-    checkCameraSupport().then(setCameraSupported)
-  }, [])
+  const photoInputRef = React.useRef<HTMLInputElement>(null)
 
   const handleFileUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0]
@@ -43,6 +35,14 @@ export default function ReceiptScanner({
     }
   }
 
+  const handlePhotoSelect = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0]
+    if (file) {
+      // Photos from library should show cropping interface
+      setUploadedFile(file)
+    }
+  }
+
   const handleUploadCropAccept = (croppedFile: File) => {
     setUploadedFile(null)
     onFileSelect(croppedFile)
@@ -50,42 +50,17 @@ export default function ReceiptScanner({
 
   const handleUploadCropCancel = () => {
     setUploadedFile(null)
-    // Reset file input
+    // Reset file inputs
     if (fileInputRef.current) {
       fileInputRef.current.value = ''
     }
-  }
-
-  const handleCameraCapture = (file: File) => {
-    onFileSelect(file)
-    setShowCamera(false)
-    
-    toast({
-      title: "Receipt captured!",
-      description: `Image saved as ${file.name}`,
-    })
-  }
-
-  const handleCameraError = (error: string) => {
-    console.error('Camera error:', error)
-    toast({
-      title: "Camera Error",
-      description: error,
-      variant: "destructive"
-    })
-    setShowCamera(false)
-  }
-
-  const handleScanClick = () => {
-    if (cameraSupported) {
-      setShowCamera(true)
-    } else {
-      toast({
-        title: "Camera not available",
-        description: "Please use the file upload option instead.",
-        variant: "destructive"
-      })
+    if (photoInputRef.current) {
+      photoInputRef.current.value = ''
     }
+  }
+
+  const handlePhotoLibraryClick = () => {
+    photoInputRef.current?.click()
   }
 
   // Show crop interface for uploaded images
@@ -102,7 +77,7 @@ export default function ReceiptScanner({
   return (
     <>
       <div className="space-y-4">
-        {/* File Input (Hidden) */}
+        {/* File Inputs (Hidden) */}
         <input
           ref={fileInputRef}
           type="file"
@@ -111,59 +86,57 @@ export default function ReceiptScanner({
           className="hidden"
           disabled={disabled}
         />
+        
+        <input
+          ref={photoInputRef}
+          type="file"
+          accept="image/*"
+          onChange={handlePhotoSelect}
+          className="hidden"
+          disabled={disabled}
+        />
 
-        {/* Action Buttons */}
-        <div className="flex flex-col sm:flex-row gap-3">
-          {/* Scan Receipt Button */}
+        {/* Action Buttons - Mobile Optimized */}
+        <div className="flex flex-col gap-3">
+          {/* Select Photo Button - Primary on Mobile */}
           <Button
             type="button"
-            onClick={handleScanClick}
-            disabled={disabled || cameraSupported === false}
-            variant="outline"
-            className="flex-1 h-12"
+            onClick={handlePhotoLibraryClick}
+            disabled={disabled}
+            className="h-14 md:h-12 bg-slate-900 hover:bg-slate-800 text-white rounded-xl md:rounded-lg shadow-md active:scale-95 transition-all duration-150"
           >
-            <Camera className="h-4 w-4 mr-2" />
-            {cameraSupported === null ? 'Checking camera...' : 
-             cameraSupported ? 'Scan Receipt' : 'Camera unavailable'}
+            <Image className="h-5 w-5 mr-2" />
+            Select Photo
           </Button>
 
-          {/* Upload File Button */}
+          {/* Upload File Button - Secondary */}
           <Button
             type="button"
             onClick={() => fileInputRef.current?.click()}
             disabled={disabled}
             variant="outline"
-            className="flex-1 h-12"
+            className="h-14 md:h-12 rounded-xl md:rounded-lg border-slate-200 text-slate-700 hover:bg-slate-50 active:scale-95 transition-all duration-150"
           >
-            <Upload className="h-4 w-4 mr-2" />
+            <Upload className="h-5 w-5 mr-2" />
             Upload File
           </Button>
         </div>
 
-        {/* Help Text */}
-        <div className="text-sm text-gray-500">
-          <p className="font-medium mb-1">Receipt Options:</p>
-          <ul className="space-y-1 text-xs">
+        {/* Help Text - Mobile Optimized */}
+        <div className="text-xs md:text-sm text-slate-500 bg-slate-50 rounded-lg p-3 md:bg-transparent md:p-0">
+          <p className="font-medium mb-2 md:mb-1 text-slate-700">Receipt Options:</p>
+          <ul className="space-y-2 md:space-y-1 text-xs">
             <li className="flex items-center">
-              <Camera className="h-3 w-3 mr-2 flex-shrink-0" />
-              <span>Scan with your camera for best results</span>
+              <Image className="h-3 w-3 mr-2 flex-shrink-0 text-slate-600" />
+              <span>Select a photo from your photo library</span>
             </li>
             <li className="flex items-center">
-              <Upload className="h-3 w-3 mr-2 flex-shrink-0" />
+              <Upload className="h-3 w-3 mr-2 flex-shrink-0 text-slate-600" />
               <span>Upload JPG, PNG, HEIC, or PDF files (max 10MB)</span>
             </li>
           </ul>
         </div>
       </div>
-
-      {/* Camera Modal */}
-      {showCamera && (
-        <CameraPreview
-          onCapture={handleCameraCapture}
-          onCancel={() => setShowCamera(false)}
-          onError={handleCameraError}
-        />
-      )}
     </>
   )
 }

@@ -108,19 +108,19 @@ export default function ReimbursementForm() {
   }
 
   return (
-    <div className="max-w-2xl mx-auto space-y-8">
-      {/* App Description */}
-      <div className="border rounded-lg p-4 bg-blue-50 border-blue-200">
-        <h3 className="font-semibold mb-2">📄 Reimbursement PDF Generator</h3>
-        <p className="text-sm text-blue-700">
-          Fill out your reimbursement details and attach your receipt. We&apos;ll generate a professional PDF with your receipt attached for easy submission to your finance team.
+    <div className="px-4 md:px-0 space-y-6 md:space-y-8">
+      {/* Info Banner - Mobile Optimized */}
+      <div className="rounded-lg md:border p-4 bg-slate-50 md:border-slate-200">
+        <h3 className="font-medium text-slate-900 mb-2 text-sm md:text-base">Expense Reimbursement Form</h3>
+        <p className="text-xs md:text-sm text-slate-600 leading-relaxed">
+          Complete all required fields and attach your receipt to generate a professional PDF.
         </p>
       </div>
 
       {/* Form */}
       <Form {...form}>
-        <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-5 md:space-y-6">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-5 md:gap-6">
             <FormField
               control={form.control}
               name="merchant"
@@ -333,14 +333,16 @@ export default function ReimbursementForm() {
             )}
           </div>
 
-          <Button
-            type="submit"
-            className="w-full"
-            disabled={isSubmitting}
-            size="lg"
-          >
-            {isSubmitting ? 'Generating PDF...' : '📄 Generate Reimbursement PDF'}
-          </Button>
+          {/* Mobile-Optimized Submit Button */}
+          <div className="pt-4">
+            <Button
+              type="submit"
+              className="w-full h-14 md:h-12 bg-slate-900 hover:bg-slate-800 text-white text-base md:text-base font-medium rounded-xl md:rounded-lg shadow-lg active:scale-95 transition-all duration-150"
+              disabled={isSubmitting}
+            >
+              {isSubmitting ? 'Generating PDF...' : 'Generate Reimbursement PDF'}
+            </Button>
+          </div>
         </form>
       </Form>
     </div>
