@@ -88,7 +88,7 @@ export default function ReimbursementForm() {
       
       // Add form fields
       Object.entries(data).forEach(([key, value]) => {
-        if (key !== 'receipt' && value !== undefined && value !== '') {
+        if (key !== 'receipt' && value !== undefined && value !== null && value !== '') {
           formData.append(key, value.toString())
         }
       })
@@ -187,6 +187,7 @@ export default function ReimbursementForm() {
                       step="0.01"
                       placeholder="0.00"
                       {...field}
+                      value={field.value ?? undefined}
                       onChange={e => field.onChange(e.target.value === '' ? undefined : parseFloat(e.target.value) || 0)}
                     />
                   </FormControl>
@@ -207,6 +208,7 @@ export default function ReimbursementForm() {
                       step="0.01"
                       placeholder="0.00"
                       {...field}
+                      value={field.value ?? undefined}
                       onChange={e => field.onChange(e.target.value === '' ? undefined : parseFloat(e.target.value) || 0)}
                     />
                   </FormControl>
@@ -227,6 +229,7 @@ export default function ReimbursementForm() {
                       step="0.01"
                       placeholder="0.00"
                       {...field}
+                      value={field.value ?? undefined}
                       onChange={e => field.onChange(e.target.value === '' ? undefined : parseFloat(e.target.value) || 0)}
                     />
                   </FormControl>
@@ -491,6 +494,7 @@ export default function ReimbursementForm() {
                           step="0.0001"
                           placeholder="1.3500"
                           {...field}
+                          value={field.value ?? undefined}
                           onChange={e => field.onChange(e.target.value === '' ? undefined : parseFloat(e.target.value) || 0)}
                         />
                       </FormControl>
@@ -507,7 +511,11 @@ export default function ReimbursementForm() {
                     <FormItem>
                       <FormLabel>Exchange Rate Date</FormLabel>
                       <FormControl>
-                        <Input type="date" {...field} />
+                        <Input 
+                          type="date" 
+                          {...field} 
+                          value={field.value ?? undefined}
+                        />
                       </FormControl>
                       <p className="text-xs text-slate-600">Date when the exchange rate was valid</p>
                       <FormMessage />
@@ -564,6 +572,7 @@ export default function ReimbursementForm() {
                           step="0.1"
                           placeholder="0.0"
                           {...field}
+                          value={field.value ?? undefined}
                           onChange={e => field.onChange(e.target.value === '' ? undefined : parseFloat(e.target.value) || 0)}
                         />
                       </FormControl>
@@ -584,6 +593,7 @@ export default function ReimbursementForm() {
                           step="0.001"
                           placeholder="0.655"
                           {...field}
+                          value={field.value ?? undefined}
                           onChange={e => field.onChange(e.target.value === '' ? undefined : parseFloat(e.target.value) || 0)}
                         />
                       </FormControl>

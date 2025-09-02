@@ -377,6 +377,7 @@ export default function BatchReimbursementForm() {
                           step="0.01"
                           placeholder="0.00"
                           {...field}
+                          value={field.value ?? undefined}
                           onChange={e => field.onChange(e.target.value === '' ? undefined : parseFloat(e.target.value) || 0)}
                         />
                       </FormControl>
@@ -397,6 +398,7 @@ export default function BatchReimbursementForm() {
                           step="0.01"
                           placeholder="0.00"
                           {...field}
+                          value={field.value ?? undefined}
                           onChange={e => field.onChange(e.target.value === '' ? undefined : parseFloat(e.target.value) || 0)}
                         />
                       </FormControl>
@@ -581,6 +583,7 @@ export default function BatchReimbursementForm() {
                             step="0.0001"
                             placeholder="1.3500"
                             {...field}
+                            value={field.value ?? undefined}
                             onChange={e => field.onChange(e.target.value === '' ? undefined : parseFloat(e.target.value) || 0)}
                           />
                         </FormControl>
@@ -596,7 +599,11 @@ export default function BatchReimbursementForm() {
                       <FormItem>
                         <FormLabel>Exchange Rate Date</FormLabel>
                         <FormControl>
-                          <Input type="date" {...field} />
+                          <Input 
+                            type="date" 
+                            {...field} 
+                            value={field.value ?? undefined}
+                          />
                         </FormControl>
                         <FormMessage />
                       </FormItem>
