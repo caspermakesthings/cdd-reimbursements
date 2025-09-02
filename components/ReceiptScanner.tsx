@@ -3,7 +3,6 @@
 import React from 'react'
 import { Button } from '@/components/ui/button'
 import { Image, Upload } from 'lucide-react'
-import ImagePreviewCrop from '@/components/ImagePreviewCrop'
 import { useToast } from '@/components/ui/use-toast'
 
 interface ReceiptScannerProps {
@@ -17,7 +16,6 @@ export default function ReceiptScanner({
   accept = ".jpg,.jpeg,.png,.heic,.pdf",
   disabled = false 
 }: ReceiptScannerProps) {
-  const [uploadedFile, setUploadedFile] = React.useState<File | null>(null)
   const { toast } = useToast()
   const fileInputRef = React.useRef<HTMLInputElement>(null)
   const photoInputRef = React.useRef<HTMLInputElement>(null)
@@ -25,53 +23,31 @@ export default function ReceiptScanner({
   const handleFileUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0]
     if (file) {
-      // Check if it's an image that can benefit from cropping
-      if (file.type.startsWith('image/') && file.type !== 'image/gif') {
-        setUploadedFile(file)
-      } else {
-        // PDFs and other files go directly
-        onFileSelect(file)
-      }
+      // All files go directly to the form - no cropping needed
+      onFileSelect(file)
+      
+      toast({
+        title: "File selected!",
+        description: `${file.name} has been attached to your reimbursement.`,
+      })
     }
   }
 
   const handlePhotoSelect = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0]
     if (file) {
-      // Photos from library should show cropping interface
-      setUploadedFile(file)
-    }
-  }
-
-  const handleUploadCropAccept = (croppedFile: File) => {
-    setUploadedFile(null)
-    onFileSelect(croppedFile)
-  }
-
-  const handleUploadCropCancel = () => {
-    setUploadedFile(null)
-    // Reset file inputs
-    if (fileInputRef.current) {
-      fileInputRef.current.value = ''
-    }
-    if (photoInputRef.current) {
-      photoInputRef.current.value = ''
+      // Photos go directly to the form - no cropping needed
+      onFileSelect(file)
+      
+      toast({
+        title: "Photo selected!",
+        description: `${file.name} has been attached to your reimbursement.`,
+      })
     }
   }
 
   const handlePhotoLibraryClick = () => {
     photoInputRef.current?.click()
-  }
-
-  // Show crop interface for uploaded images
-  if (uploadedFile) {
-    return (
-      <ImagePreviewCrop
-        file={uploadedFile}
-        onAccept={handleUploadCropAccept}
-        onCancel={handleUploadCropCancel}
-      />
-    )
   }
 
   return (

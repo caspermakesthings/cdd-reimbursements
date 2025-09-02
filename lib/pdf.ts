@@ -5,6 +5,7 @@ import { formatCurrency, formatDate } from "@/lib/utils"
 interface PdfTotals {
   subtotal: number
   tax: number
+  tip: number
   total: number
 }
 
@@ -71,10 +72,10 @@ export async function buildCoverPage(
     })
   }
   
-  // Left column
+  // Left column - Basic Info
   drawField('Merchant', formData.merchant, leftX, yPos)
   yPos -= lineHeight
-  drawField('Category', formData.category, leftX, yPos)
+  drawField('Category', formData.category + (formData.subcategory ? ` - ${formData.subcategory}` : ''), leftX, yPos)
   yPos -= lineHeight
   drawField('Date', formatDate(formData.date), leftX, yPos)
   yPos -= lineHeight
@@ -82,21 +83,55 @@ export async function buildCoverPage(
   yPos -= lineHeight
   drawField('Paid By', formData.paidBy, leftX, yPos)
   
-  // Right column
-  yPos = height - 180
+  // Right column - Additional Info
+  let rightColumnY = height - 180
   if (formData.projectOrClient) {
-    drawField('Project', formData.projectOrClient, rightX, yPos)
-    yPos -= lineHeight
+    drawField('Project', formData.projectOrClient, rightX, rightColumnY)
+    rightColumnY -= lineHeight
   }
   
   if (formData.approverEmail) {
-    drawField('Approver', formData.approverEmail, rightX, yPos)
-    yPos -= lineHeight
+    drawField('Approver', formData.approverEmail, rightX, rightColumnY)
+    rightColumnY -= lineHeight
+  }
+
+  // Currency conversion info
+  if (formData.exchangeRate && formData.currency !== 'USD') {
+    drawField('Exchange Rate', `1 ${formData.currency} = ${formData.exchangeRate} USD`, rightX, rightColumnY)
+    rightColumnY -= lineHeight
+    if (formData.exchangeRateDate) {
+      drawField('Rate Date', formatDate(formData.exchangeRateDate), rightX, rightColumnY)
+      rightColumnY -= lineHeight
+    }
+  }
+
+  // Travel details
+  if (formData.startLocation || formData.endLocation) {
+    if (formData.startLocation) {
+      drawField('From', formData.startLocation, rightX, rightColumnY)
+      rightColumnY -= lineHeight
+    }
+    if (formData.endLocation) {
+      drawField('To', formData.endLocation, rightX, rightColumnY)
+      rightColumnY -= lineHeight
+    }
+    if (formData.milesDriven) {
+      drawField('Miles', `${formData.milesDriven} miles`, rightX, rightColumnY)
+      rightColumnY -= lineHeight
+    }
+    if (formData.mileageRate) {
+      drawField('Rate', `$${formData.mileageRate}/mile`, rightX, rightColumnY)
+      rightColumnY -= lineHeight
+    }
   }
   
-  // Totals Box
-  const boxY = height - 350
-  const boxHeight = 80
+  // Totals Box - Position it below both columns with adequate spacing
+  const leftColumnBottom = height - 180 - (5 * lineHeight) // Left column has 5 fixed fields
+  const rightColumnBottom = rightColumnY - 20 // Add 20px buffer
+  const lowestPoint = Math.min(leftColumnBottom, rightColumnBottom)
+  
+  const boxY = lowestPoint - 40 // 40px spacing above the box
+  const boxHeight = 110
   const boxWidth = 200
   
   // Draw box border
@@ -118,58 +153,98 @@ export async function buildCoverPage(
     color: rgb(0, 0, 0)
   })
   
-  // Totals content
+  // Totals content with proper spacing
   const totalsX = width - boxWidth - 40
+  const lineSpacing = 18
+  let totalsY = boxY + boxHeight - 45
+  
   page.drawText(`Subtotal: ${formatCurrency(totals.subtotal, formData.currency)}`, {
     x: totalsX,
-    y: boxY + 40,
+    y: totalsY,
     size: 10,
     font: helveticaFont,
     color: rgb(0, 0, 0)
   })
   
+  totalsY -= lineSpacing
   page.drawText(`Tax: ${formatCurrency(totals.tax, formData.currency)}`, {
     x: totalsX,
-    y: boxY + 25,
+    y: totalsY,
     size: 10,
     font: helveticaFont,
     color: rgb(0, 0, 0)
   })
   
+  totalsY -= lineSpacing
+  page.drawText(`Tip: ${formatCurrency(totals.tip, formData.currency)}`, {
+    x: totalsX,
+    y: totalsY,
+    size: 10,
+    font: helveticaFont,
+    color: rgb(0, 0, 0)
+  })
+  
+  totalsY -= lineSpacing + 2
   page.drawText(`Total: ${formatCurrency(totals.total, formData.currency)}`, {
     x: totalsX,
-    y: boxY + 8,
+    y: totalsY,
     size: 12,
     font: helveticaBoldFont,
     color: rgb(0, 0, 0)
   })
   
-  // Notes section
-  if (formData.notes && formData.notes.trim()) {
-    page.drawText('NOTES:', {
+  // Business Purpose section - Required (position below totals box)
+  let currentY = boxY - 60 // Start 60px below the totals box
+  
+  // Ensure we don't go too low on the page
+  if (currentY < 200) {
+    // If we're running out of space, move to a second page
+    const secondPage = pdfDoc.addPage([612, 792])
+    currentY = height - 80 // Start near top of new page
+    
+    // Add continuation header
+    secondPage.drawText('REIMBURSEMENT REQUEST (Continued)', {
       x: 50,
-      y: height - 400,
-      size: 12,
+      y: currentY,
+      size: 16,
       font: helveticaBoldFont,
       color: rgb(0, 0, 0)
     })
     
-    const words = formData.notes.trim().split(' ')
+    currentY -= 40
+    
+    // Switch to drawing on second page
+    page = secondPage
+  }
+  
+  page.drawText('BUSINESS PURPOSE:', {
+    x: 50,
+    y: currentY,
+    size: 12,
+    font: helveticaBoldFont,
+    color: rgb(0, 0, 0)
+  })
+  
+  currentY -= 20
+  const drawWrappedText = (text: string, startY: number, maxWidth: number = 80) => {
+    const words = text.split(' ')
     let line = ''
-    let notesY = height - 425
+    let yPosition = startY
     
     for (const word of words) {
       const testLine = line + (line ? ' ' : '') + word
-      if (testLine.length > 80) {
-        page.drawText(line, {
-          x: 50,
-          y: notesY,
-          size: 10,
-          font: helveticaFont,
-          color: rgb(0, 0, 0)
-        })
+      if (testLine.length > maxWidth) {
+        if (line) {
+          page.drawText(line, {
+            x: 50,
+            y: yPosition,
+            size: 10,
+            font: helveticaFont,
+            color: rgb(0, 0, 0)
+          })
+          yPosition -= 15
+        }
         line = word
-        notesY -= 15
       } else {
         line = testLine
       }
@@ -178,13 +253,72 @@ export async function buildCoverPage(
     if (line) {
       page.drawText(line, {
         x: 50,
-        y: notesY,
+        y: yPosition,
         size: 10,
         font: helveticaFont,
         color: rgb(0, 0, 0)
       })
+      yPosition -= 15
     }
+    
+    return yPosition
   }
+  
+  currentY = drawWrappedText(formData.businessPurpose, currentY)
+  
+  // Attendees section - For meals & entertainment
+  if (formData.attendees && formData.attendees.trim()) {
+    currentY -= 10
+    page.drawText('ATTENDEES:', {
+      x: 50,
+      y: currentY,
+      size: 12,
+      font: helveticaBoldFont,
+      color: rgb(0, 0, 0)
+    })
+    
+    currentY -= 20
+    currentY = drawWrappedText(formData.attendees, currentY)
+  }
+  
+  // Receipt confirmation
+  currentY -= 10
+  page.drawText(`RECEIPT ATTACHED: ${formData.receiptAttached ? 'YES' : 'NO'}`, {
+    x: 50,
+    y: currentY,
+    size: 10,
+    font: helveticaBoldFont,
+    color: rgb(0, 0, 0)
+  })
+
+  // Additional notes section
+  if (formData.notes && formData.notes.trim()) {
+    currentY -= 25
+    page.drawText('ADDITIONAL NOTES:', {
+      x: 50,
+      y: currentY,
+      size: 12,
+      font: helveticaBoldFont,
+      color: rgb(0, 0, 0)
+    })
+    
+    currentY -= 20
+    currentY = drawWrappedText(formData.notes, currentY)
+  }
+
+  // Compliance statement
+  currentY -= 25
+  page.drawText('COMPLIANCE STATEMENT:', {
+    x: 50,
+    y: currentY,
+    size: 10,
+    font: helveticaBoldFont,
+    color: rgb(0, 0, 0)
+  })
+  
+  currentY -= 15
+  const complianceText = "All reimbursements are submitted under CDD Advisors' accountable plan as defined by IRS Reg. §1.62-2. This expense was incurred for legitimate business purposes and complies with company policy."
+  currentY = drawWrappedText(complianceText, currentY, 85)
   
   return pdfDoc.save()
 }

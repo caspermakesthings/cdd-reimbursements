@@ -1,30 +1,39 @@
 export type Currency = "CAD" | "USD" | "EUR" | "GBP"
 
-export type Category = "Meals" | "Travel" | "Office" | "Software" | "Other"
+export type Category = "Meals & Entertainment" | "Travel" | "Office Supplies" | "Professional Services" | "Other"
 
-export type PaymentMethod = "Personal card" | "Company card" | "Cash"
+export type PaymentMethod = "Credit Card - Ending: 8680" | "Debit Card - Ending: 7923" | "Credit Card - Ending: 8476" | "Company card" | "Cash"
 
 export type PaidBy = "Me" | "Company"
 
 export interface ReimbursementFormData {
   merchant: string
-  amount: number
+  total: number
+  tax?: number
+  tip?: number
   currency: Currency
   date: string
   category: Category
+  subcategory?: string
   projectOrClient?: string
   paymentMethod: PaymentMethod
   paidBy: PaidBy
   approverEmail?: string
+  businessPurpose: string
+  attendees?: string
+  exchangeRate?: number
+  exchangeRateDate?: string
+  receiptAttached: boolean
+  startLocation?: string
+  endLocation?: string
+  milesDriven?: number
+  mileageRate?: number
   notes?: string
 }
 
 export interface ReimbursementRecord extends ReimbursementFormData {
   id: string
   submissionDate: string
-  subtotal: number
-  tax: number
-  total: number
   receiptFilename: string
   pdfFilename: string
   rawReceiptFilename?: string
@@ -48,8 +57,8 @@ export interface DriveStatusResponse {
 
 export const CURRENCIES: Currency[] = ["CAD", "USD", "EUR", "GBP"]
 
-export const CATEGORIES: Category[] = ["Meals", "Travel", "Office", "Software", "Other"]
+export const CATEGORIES: Category[] = ["Meals & Entertainment", "Travel", "Office Supplies", "Professional Services", "Other"]
 
-export const PAYMENT_METHODS: PaymentMethod[] = ["Personal card", "Company card", "Cash"]
+export const PAYMENT_METHODS: PaymentMethod[] = ["Credit Card - Ending: 8680", "Debit Card - Ending: 7923", "Credit Card - Ending: 8476", "Company card", "Cash"]
 
 export const PAID_BY_OPTIONS: PaidBy[] = ["Me", "Company"]

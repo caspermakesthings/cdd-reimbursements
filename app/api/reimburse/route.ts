@@ -10,14 +10,26 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     // Extract and validate form fields
     const formFields = {
       merchant: formData.get('merchant'),
-      amount: formData.get('amount'),
+      total: formData.get('total'),
+      tax: formData.get('tax'),
+      tip: formData.get('tip'),
       currency: formData.get('currency'),
       date: formData.get('date'),
       category: formData.get('category'),
+      subcategory: formData.get('subcategory'),
       projectOrClient: formData.get('projectOrClient'),
       paymentMethod: formData.get('paymentMethod'),
       paidBy: formData.get('paidBy'),
       approverEmail: formData.get('approverEmail'),
+      businessPurpose: formData.get('businessPurpose'),
+      attendees: formData.get('attendees'),
+      exchangeRate: formData.get('exchangeRate'),
+      exchangeRateDate: formData.get('exchangeRateDate'),
+      receiptAttached: formData.get('receiptAttached') === 'true',
+      startLocation: formData.get('startLocation'),
+      endLocation: formData.get('endLocation'),
+      milesDriven: formData.get('milesDriven'),
+      mileageRate: formData.get('mileageRate'),
       notes: formData.get('notes'),
     }
     
@@ -40,13 +52,18 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
       type: receiptFile.type
     })
     
-    // Generate ID and calculate totals
+    // Generate ID and use provided totals
     const id = generateReimbursementId()
-    const subtotal = validatedFields.amount
-    const tax = 0 // MVP: no tax calculation
-    const total = subtotal + tax
+    const tax = validatedFields.tax || 0
+    const tip = validatedFields.tip || 0
+    const subtotal = validatedFields.total - tax - tip
     
-    const totals = { subtotal, tax, total }
+    const totals = { 
+      subtotal, 
+      tax, 
+      tip,
+      total: validatedFields.total 
+    }
     
     // Generate cover page PDF
     const coverPdfBytes = await buildCoverPage(validatedFields, totals, id)

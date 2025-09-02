@@ -4,33 +4,52 @@ import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { reimbursementSchema, ReimbursementFormData } from '@/lib/schema'
 import { CURRENCIES, CATEGORIES, PAYMENT_METHODS, PAID_BY_OPTIONS } from '@/types'
+import { EXPENSE_CATEGORIES } from '@/lib/schema'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
+import { Checkbox } from '@/components/ui/checkbox'
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form'
 import { useToast } from '@/components/ui/use-toast'
 import { useState, useEffect } from 'react'
 import ReceiptScanner from '@/components/ReceiptScanner'
+import { useExchangeRates, getExchangeRateToUSD, formatExchangeRate } from '@/hooks/useExchangeRates'
 
 export default function ReimbursementForm() {
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [selectedFile, setSelectedFile] = useState<File | null>(null)
+  const [selectedCategory, setSelectedCategory] = useState<string>('Meals & Entertainment')
+  const [showTravelFields, setShowTravelFields] = useState(false)
+  const [showCurrencyFields, setShowCurrencyFields] = useState(false)
   const { toast } = useToast()
+  const { rates, loading: ratesLoading, error: ratesError, lastUpdated, isUsingFallback } = useExchangeRates()
 
   const form = useForm<ReimbursementFormData>({
     resolver: zodResolver(reimbursementSchema),
     defaultValues: {
       merchant: '',
-      amount: 0,
+      total: 0,
+      tax: undefined,
+      tip: undefined,
       currency: 'CAD',
       date: new Date().toISOString().split('T')[0],
-      category: 'Meals',
+      category: 'Meals & Entertainment',
+      subcategory: '',
       projectOrClient: '',
-      paymentMethod: 'Personal card',
+      paymentMethod: 'Credit Card - Ending: 8680',
       paidBy: 'Me',
       approverEmail: '',
+      businessPurpose: '',
+      attendees: '',
+      exchangeRate: undefined,
+      exchangeRateDate: undefined,
+      receiptAttached: true,
+      startLocation: '',
+      endLocation: '',
+      milesDriven: undefined,
+      mileageRate: undefined,
       notes: ''
     }
   })
@@ -39,6 +58,27 @@ export default function ReimbursementForm() {
   const handleFileSelect = (file: File) => {
     setSelectedFile(file)
   }
+
+  // Watch category changes to show/hide conditional fields
+  const watchedCategory = form.watch('category')
+  const watchedCurrency = form.watch('currency')
+  
+  useEffect(() => {
+    setSelectedCategory(watchedCategory)
+    setShowTravelFields(watchedCategory === 'Travel')
+    setShowCurrencyFields(watchedCurrency !== 'USD')
+    
+    // Auto-populate exchange rate when currency changes
+    if (watchedCurrency && watchedCurrency !== 'USD' && rates[watchedCurrency]) {
+      const exchangeRateToUSD = getExchangeRateToUSD(watchedCurrency, rates)
+      form.setValue('exchangeRate', exchangeRateToUSD)
+      form.setValue('exchangeRateDate', new Date().toISOString().split('T')[0])
+    } else if (watchedCurrency === 'USD') {
+      // Clear exchange rate fields for USD
+      form.setValue('exchangeRate', undefined)
+      form.setValue('exchangeRateDate', undefined)
+    }
+  }, [watchedCategory, watchedCurrency, rates, form])
 
   async function onSubmit(data: ReimbursementFormData) {
     setIsSubmitting(true)
@@ -137,17 +177,57 @@ export default function ReimbursementForm() {
 
             <FormField
               control={form.control}
-              name="amount"
+              name="total"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Amount *</FormLabel>
+                  <FormLabel>Total *</FormLabel>
                   <FormControl>
                     <Input
                       type="number"
                       step="0.01"
                       placeholder="0.00"
                       {...field}
-                      onChange={e => field.onChange(parseFloat(e.target.value) || 0)}
+                      onChange={e => field.onChange(e.target.value === '' ? undefined : parseFloat(e.target.value) || 0)}
+                    />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+
+            <FormField
+              control={form.control}
+              name="tax"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Tax</FormLabel>
+                  <FormControl>
+                    <Input
+                      type="number"
+                      step="0.01"
+                      placeholder="0.00"
+                      {...field}
+                      onChange={e => field.onChange(e.target.value === '' ? undefined : parseFloat(e.target.value) || 0)}
+                    />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+
+            <FormField
+              control={form.control}
+              name="tip"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Tip</FormLabel>
+                  <FormControl>
+                    <Input
+                      type="number"
+                      step="0.01"
+                      placeholder="0.00"
+                      {...field}
+                      onChange={e => field.onChange(e.target.value === '' ? undefined : parseFloat(e.target.value) || 0)}
                     />
                   </FormControl>
                   <FormMessage />
@@ -218,6 +298,33 @@ export default function ReimbursementForm() {
                 </FormItem>
               )}
             />
+
+            {selectedCategory && EXPENSE_CATEGORIES[selectedCategory as keyof typeof EXPENSE_CATEGORIES] && (
+              <FormField
+                control={form.control}
+                name="subcategory"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Subcategory</FormLabel>
+                    <Select onValueChange={field.onChange} value={field.value}>
+                      <FormControl>
+                        <SelectTrigger>
+                          <SelectValue placeholder="Select subcategory" />
+                        </SelectTrigger>
+                      </FormControl>
+                      <SelectContent>
+                        {EXPENSE_CATEGORIES[selectedCategory as keyof typeof EXPENSE_CATEGORIES]?.map(subcategory => (
+                          <SelectItem key={subcategory} value={subcategory}>
+                            {subcategory}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+            )}
 
             <FormField
               control={form.control}
@@ -302,15 +409,226 @@ export default function ReimbursementForm() {
             />
           </div>
 
+          {/* Business Purpose - Required */}
+          <FormField
+            control={form.control}
+            name="businessPurpose"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>Business Purpose *</FormLabel>
+                <FormControl>
+                  <Textarea
+                    placeholder="Describe the business relationship and purpose (e.g., 'Met with ViewSonic client to discuss Q4 project planning and marketing strategy deliverables')"
+                    className="resize-none min-h-[80px]"
+                    {...field}
+                  />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+
+          {/* Attendees - For meals & entertainment */}
+          {(selectedCategory === 'Meals & Entertainment') && (
+            <FormField
+              control={form.control}
+              name="attendees"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Attendees</FormLabel>
+                  <FormControl>
+                    <Textarea
+                      placeholder="List attendees with full names, companies, and relationships (e.g., 'John Doe (ViewSonic, Creative Director), Casper Koopman (CDD Advisors, Business Lead)')"
+                      className="resize-none min-h-[60px]"
+                      {...field}
+                    />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+          )}
+
+          {/* Currency Exchange Fields */}
+          {showCurrencyFields && (
+            <div className="space-y-4">
+              {/* Exchange Rate Info Banner */}
+              <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-sm font-medium text-blue-900">
+                      Current Exchange Rate: {watchedCurrency && rates[watchedCurrency] ? 
+                        formatExchangeRate(watchedCurrency, getExchangeRateToUSD(watchedCurrency, rates)) : 
+                        'Loading...'}
+                    </p>
+                    {lastUpdated && (
+                      <p className="text-xs text-blue-700">
+                        {isUsingFallback ? 'Using fallback rates' : `Updated: ${lastUpdated}`}
+                      </p>
+                    )}
+                  </div>
+                  {ratesLoading && (
+                    <div className="text-xs text-blue-600">Loading...</div>
+                  )}
+                </div>
+                {ratesError && (
+                  <p className="text-xs text-orange-600 mt-1">
+                    {ratesError}
+                  </p>
+                )}
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-5 md:gap-6">
+                <FormField
+                  control={form.control}
+                  name="exchangeRate"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Exchange Rate to USD</FormLabel>
+                      <FormControl>
+                        <Input
+                          type="number"
+                          step="0.0001"
+                          placeholder="1.3500"
+                          {...field}
+                          onChange={e => field.onChange(e.target.value === '' ? undefined : parseFloat(e.target.value) || 0)}
+                        />
+                      </FormControl>
+                      <p className="text-xs text-slate-600">Auto-populated with current rate, edit if needed</p>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                <FormField
+                  control={form.control}
+                  name="exchangeRateDate"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Exchange Rate Date</FormLabel>
+                      <FormControl>
+                        <Input type="date" {...field} />
+                      </FormControl>
+                      <p className="text-xs text-slate-600">Date when the exchange rate was valid</p>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              </div>
+            </div>
+          )}
+
+          {/* Travel/Mileage Fields */}
+          {showTravelFields && (
+            <div className="space-y-5">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-5 md:gap-6">
+                <FormField
+                  control={form.control}
+                  name="startLocation"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Start Location</FormLabel>
+                      <FormControl>
+                        <Input placeholder="Starting point" {...field} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                <FormField
+                  control={form.control}
+                  name="endLocation"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>End Location</FormLabel>
+                      <FormControl>
+                        <Input placeholder="Destination" {...field} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-5 md:gap-6">
+                <FormField
+                  control={form.control}
+                  name="milesDriven"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Miles Driven</FormLabel>
+                      <FormControl>
+                        <Input
+                          type="number"
+                          step="0.1"
+                          placeholder="0.0"
+                          {...field}
+                          onChange={e => field.onChange(e.target.value === '' ? undefined : parseFloat(e.target.value) || 0)}
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                <FormField
+                  control={form.control}
+                  name="mileageRate"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Mileage Rate ($/mile)</FormLabel>
+                      <FormControl>
+                        <Input
+                          type="number"
+                          step="0.001"
+                          placeholder="0.655"
+                          {...field}
+                          onChange={e => field.onChange(e.target.value === '' ? undefined : parseFloat(e.target.value) || 0)}
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              </div>
+            </div>
+          )}
+
+          {/* Receipt Confirmation */}
+          <FormField
+            control={form.control}
+            name="receiptAttached"
+            render={({ field }) => (
+              <FormItem className="flex flex-row items-start space-x-3 space-y-0">
+                <FormControl>
+                  <Checkbox
+                    checked={field.value}
+                    onCheckedChange={field.onChange}
+                  />
+                </FormControl>
+                <div className="space-y-1 leading-none">
+                  <FormLabel>
+                    Receipt Attached
+                  </FormLabel>
+                  <p className="text-xs text-slate-600">
+                    Confirm that you have attached a receipt for this expense
+                  </p>
+                </div>
+              </FormItem>
+            )}
+          />
+
+          {/* Additional Notes */}
           <FormField
             control={form.control}
             name="notes"
             render={({ field }) => (
               <FormItem>
-                <FormLabel>Notes</FormLabel>
+                <FormLabel>Additional Notes</FormLabel>
                 <FormControl>
                   <Textarea
-                    placeholder="Additional notes or details..."
+                    placeholder="Any additional details or context..."
                     className="resize-none"
                     {...field}
                   />
@@ -319,6 +637,12 @@ export default function ReimbursementForm() {
               </FormItem>
             )}
           />
+
+          {/* Reimbursement Policy Reference */}
+          <div className="text-xs text-slate-600 bg-slate-50 p-3 rounded-lg">
+            <p className="font-medium mb-1">Reimbursement Policy:</p>
+            <p>All reimbursements are submitted under CDD Advisors' accountable plan as defined by IRS Reg. §1.62-2. By submitting this form, you certify that this expense was incurred for legitimate business purposes and complies with company policy.</p>
+          </div>
 
           <div className="space-y-3">
             <Label>Receipt *</Label>
